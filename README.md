@@ -1,4 +1,4 @@
-# ldapquery
+# LdapQueryService
 LDAP Library for .netcore allowing you to Authenticate with LDAP Query Users and Groups
 
 # How to use
@@ -6,8 +6,8 @@ LDAP Library for .netcore allowing you to Authenticate with LDAP Query Users and
 Initially thanks for considering using this library - we hope that it gives you some benefits.
 In terms of using the Library the following should get you up and running quickly
 
-LDAP settings in appSettings.json
-
+###LDAP settings in appSettings.json
+```
   "LDAP": {
     "FullDNS": "myorg.com",
     "Port": 636,
@@ -15,30 +15,34 @@ LDAP settings in appSettings.json
     "UseSSL": false,
     "UserLoginDomain": "MyDefaultDomain (Optional)"
   },
+```
   
-In Startup.cs
+###In Startup.cs
 Register the service into the DI 
-
+```
 public void ConfigureServices(IServiceCollection services)
 {
 	 //Inject LDAP provider
 	services.Configure<LdapConfig>(Configuration.GetSection(LdapConfig.Section));
 	services.AddSingleton<ILdapQueryService, LdapQueryService>();
 }
+```
 
+###Controller Example
 Utilising in the controller class, the below should give you a good example of how to use the Library
 
+```
 using System;
-using Netigent.LdapQuery;
-using Netigent.LdapQuery.Enum;
-using Netigent.LdapQuery.Models;
+using Netigent.Utils.Ldap;
+using Netigent.Utils.Ldap.Enum;
+using Netigent.Utils.Ldap.Models;
 using Microsoft.Extensions.Options;
 
 namespace MyOrg.CompanyWeb.Controllers
 {
 	public class AuthController : Controller
 	{
-		//Assign ILdapQueryService to a readonly field;
+		//Assign to readonly field;
 		private readonly ILdapQueryService _authService;
 		private readonly string AdminCn = "CN=SecretAdminGroup,OU=Users,DC=myorg,DC=com"
 
@@ -57,8 +61,8 @@ namespace MyOrg.CompanyWeb.Controllers
 			string username = Convert.ToString(Request.Form["txtUserId"]);
 			string password = Convert.ToString(Request.Form["txtPassword"]);
 
-			//Attempt Login using ILdapQueryService - will return true if Logged In / false if it couldnt bind
-			if(!_authService.Login(LdapQueryAttribute.sAMAccountName, domain, username, password, out string loginErrorMessage))
+			//Attempt Login - will return true if Logged In
+			if(!_authService.Login(domain, username, password, out string loginErrorMessage))
 			{
 				TempData["UserMessage"] = loginErrorMessage;
 				_logger.LogInformation($"Ldap Authentication: Failed for {username} - {loginErrorMessage}");
@@ -77,3 +81,4 @@ namespace MyOrg.CompanyWeb.Controllers
 		}
 	}
 }
+```
