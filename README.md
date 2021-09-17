@@ -1,12 +1,13 @@
 # LdapQueryService
-LDAP Library for .netcore allowing you to Authenticate with LDAP Query Users and Groups
+LDAP Library for .netcore allowing you to Authenticate, Query Users and Groups, check membership.
 
 # How to use
 
 Initially thanks for considering using this library - we hope that it gives you some benefits.
 In terms of using the Library the following should get you up and running quickly
 
-###LDAP settings in appSettings.json
+### LDAP settings in **appSettings.json**
+
 ```
   "LDAP": {
     "FullDNS": "myorg.com",
@@ -17,7 +18,7 @@ In terms of using the Library the following should get you up and running quickl
   },
 ```
   
-###In Startup.cs
+### Registering In **Startup.cs**
 Register the service into the DI 
 ```
 public void ConfigureServices(IServiceCollection services)
@@ -28,7 +29,7 @@ public void ConfigureServices(IServiceCollection services)
 }
 ```
 
-###Controller Example
+### Usage in a Controller Example
 Utilising in the controller class, the below should give you a good example of how to use the Library
 
 ```
@@ -82,3 +83,5 @@ namespace MyOrg.CompanyWeb.Controllers
 	}
 }
 ```
+
+
