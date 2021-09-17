@@ -1,0 +1,30 @@
+name: Build and Publish
+on:
+  push:
+    branches: [ main ]
+    
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    
+    #Build the Project
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 5.0.x
+        
+    - name: Restore dependencies
+      run: dotnet restore
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
+      
+    #Publish to Nuget.org
+    - name: Publish FluentEmail.Core
+      uses: brandedoutcast/publish-nuget@v2.5.2
+      with:
+          PROJECT_FILE_PATH: Netigent.Utils.Ldap/Netigent.Utils.Ldap.csproj
+          NUGET_KEY: ${{secrets.NUGET_API_KEY}}
+          VERSION_STATIC: 1.0.0
