@@ -22,9 +22,9 @@ jobs:
       run: dotnet build --configuration Release --no-restore
       
     #Publish to Nuget.org
-    - name: Publish FluentEmail.Core
+    - name: Publish Netigent Ldap library
       uses: brandedoutcast/publish-nuget@v2.5.2
       with:
           PROJECT_FILE_PATH: Netigent.Utils.Ldap/Netigent.Utils.Ldap.csproj
           NUGET_KEY: ${{secrets.NUGET_API_KEY}}
-          VERSION_STATIC: 1.0.0
+          VERSION_STATIC: 1.0.1
