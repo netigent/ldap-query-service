@@ -7,7 +7,31 @@ Initially thanks for considering using this library - we hope that it gives you 
 In terms of using the Library the following should get you up and running quickly
 
 # Version Changes
-1.0.2 Adding new field "AzureObjectId" (msDS-aadObjectId), for User/Person based objects, the property **msDS-aadObjectId** matches **OID** property in the JWT tokens issued by Azure OIDC, where the same ActiveDirectory is being used
+**1.0.3** Extended the user/person query result to give extra properties
+(Login Related)
+LastLogon 
+LogonCount
+LockoutTime 
+PwdLastSet 
+
+(Job Related)
+ManagerCn 
+Company 
+EmployeeID 
+JobTitle 
+Department 
+
+(Address Information)
+OfficeName 
+Street 
+City 
+State 
+Country
+ZipPostalCode 
+OfficePhone 
+MobilePhone 
+
+**1.0.2** Adding new field "AzureObjectId" (msDS-aadObjectId), for User/Person based objects, the property **msDS-aadObjectId** matches **OID** property in the JWT tokens issued by Azure OIDC, where the same ActiveDirectory is being used
 
 ### LDAP settings in **appSettings.json**
 
