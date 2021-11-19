@@ -10,6 +10,7 @@ namespace Netigent.Utils.Ldap
 		bool LoggedIn { get; }
 
 		//Login Operation
+		bool Login(string username, string password, out string errorMessage);
 		bool Login(string domain, string username, string password, out string errorMessage);
 
 		//Users
