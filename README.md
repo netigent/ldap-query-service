@@ -6,6 +6,9 @@ LDAP Library for .netcore allowing you to Authenticate, Query Users and Groups, 
 Initially thanks for considering using this library - we hope that it gives you some benefits.
 In terms of using the Library the following should get you up and running quickly
 
+# Version Changes
+1.0.2 Adding new field "AzureObjectId" (msDS-aadObjectId), for User/Person based objects, the property **msDS-aadObjectId** matches **OID** property in the JWT tokens issued by Azure OIDC, where the same ActiveDirectory is being used
+
 ### LDAP settings in **appSettings.json**
 
 ```
@@ -83,5 +86,3 @@ namespace MyOrg.CompanyWeb.Controllers
 	}
 }
 ```
-
-
