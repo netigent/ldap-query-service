@@ -19,5 +19,10 @@ namespace Netigent.Utils.Ldap.Models
 		public string DistinguishedName { get; set; }
 		public DateTime Created { get; set; }
 		public DateTime Modified { get; set; }
+
+		/// <summary>
+		/// Azure ObjectGUID (msDS-aadObjectId)
+		/// </summary>
+		public Guid AzureObjectId { get; set; }
 	}
 }

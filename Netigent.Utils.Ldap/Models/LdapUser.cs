@@ -17,9 +17,12 @@ namespace Netigent.Utils.Ldap.Models
 		public string PreferredLanguage { get; set; }
 		public string Firstname { get; set; }
 		public string Surname { get; set; }
-
 		public string DistinguishedName { get; set; }
 		public DateTime Created { get; set; }
 		public DateTime Modified { get; set; }
+		/// <summary>
+		/// Azure ObjectGUID (msDS-aadObjectId)
+		/// </summary>
+		public Guid AzureObjectId { get; set; }
 	}
 }

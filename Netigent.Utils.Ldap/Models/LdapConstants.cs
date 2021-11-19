@@ -15,6 +15,7 @@
 		public static string member = nameof(member);
 		public static string sn = nameof(sn);
 		public static string givenName = nameof(givenName);
+		public static string AzureObjectId = "msDS-aadObjectId";
 
 		public static string distinguishedName = nameof(distinguishedName);
 		public static string whenChanged = nameof(whenChanged);

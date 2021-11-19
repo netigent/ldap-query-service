@@ -35,6 +35,9 @@ namespace Netigent.Utils.Ldap.Extensions
 			if (searchResult.Attributes.Contains(Constants.objectGUID))
 				output.ObjectGUID = searchResult.Attributes[Constants.objectGUID].ParseValue<Guid>();
 
+			if (searchResult.Attributes.Contains(Constants.AzureObjectId))
+				output.AzureObjectId = searchResult.Attributes[Constants.AzureObjectId].ParseValue<Guid>();
+
 			if (searchResult.Attributes.Contains(Constants.objectsid))
 			{
 #pragma warning disable CA1416 // Validate platform compatibility
@@ -104,6 +107,9 @@ namespace Netigent.Utils.Ldap.Extensions
 
 			if (searchResult.Attributes.Contains(Constants.objectGUID))
 				output.ObjectGUID = searchResult.Attributes[Constants.objectGUID].ParseValue<Guid>();
+
+			if (searchResult.Attributes.Contains(Constants.AzureObjectId))
+				output.AzureObjectId = searchResult.Attributes[Constants.AzureObjectId].ParseValue<Guid>();
 
 			if (searchResult.Attributes.Contains(Constants.objectsid))
 			{

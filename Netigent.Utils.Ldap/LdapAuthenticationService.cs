@@ -27,7 +27,8 @@ namespace Netigent.Utils.Ldap
 			Constants.whenChanged,
 			Constants.whenCreated,
 			Constants.givenName,
-			Constants.sn
+			Constants.sn,
+			Constants.AzureObjectId
 			};
 
 		private readonly string[] groupFilters = new[] {
