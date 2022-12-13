@@ -157,14 +157,14 @@ namespace Netigent.Utils.Ldap
             try
             {
                 // This could be a failed callback
-                if (!string.IsNullOrEmpty(serviceAccount) && !string.IsNullOrEmpty(serviceKey) && username.Contains('@'))
+                if (!string.IsNullOrEmpty(serviceAccount) && !string.IsNullOrEmpty(serviceKey) && username.Contains("@", StringComparison.InvariantCultureIgnoreCase))
                 {
                     _connection.Bind(new NetworkCredential(serviceAccount, serviceKey));
                     username = GetUser(LdapQueryAttribute.mail, username)?.SamAccountName;
                 }
-                else if(username.Contains('\\') || username.Contains('@'))
+                else if(username.Contains('\\') || username.Contains("@", StringComparison.InvariantCultureIgnoreCase))
                 {
-                    username = username.Contains('@') ? username.Split('@')[0] : username.Split('\\')[1];
+                    username = username.Contains("@", StringComparison.InvariantCultureIgnoreCase) ? username.Split('@')[0] : username.Split('\\')[1];
                 }
 
                 //Try connecting as username + password

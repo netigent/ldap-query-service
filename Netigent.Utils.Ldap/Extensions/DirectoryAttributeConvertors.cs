@@ -99,7 +99,7 @@ namespace Netigent.Utils.Ldap.Extensions
                         //Convertible timeStamps
                         //"20210519121843.0Z"
                         //"yyyyMMddHHmmssZ"
-                        outTime = DateTime.ParseExact(datestring.Split(".", StringSplitOptions.None)[0], "yyyyMMddHHmmss", CultureInfo.InvariantCulture, DateTimeStyles.None);
+                        outTime = DateTime.ParseExact(datestring.Split('.')[0], "yyyyMMddHHmmss", CultureInfo.InvariantCulture, DateTimeStyles.None);
                         return (T)Convert.ChangeType(outTime, typeof(T));
                     }
                     catch
