@@ -162,7 +162,7 @@ namespace Netigent.Utils.Ldap
                     _connection.Bind(new NetworkCredential(serviceAccount, serviceKey));
                     username = GetUser(LdapQueryAttribute.mail, username)?.SamAccountName;
                 }
-                else if(username.Contains('\\') || username.Contains("@"))
+                else if(username.Contains("\\") || username.Contains("@"))
                 {
                     username = username.Contains("@") ? username.Split('@')[0] : username.Split('\\')[1];
                 }
