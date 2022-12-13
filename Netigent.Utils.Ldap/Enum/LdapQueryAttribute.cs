@@ -5,6 +5,7 @@
 		sAMAccountName,
 		distinguishedName,
 		objectGUID,
-		displayName
+		displayName,
+		mail
 	}
 }

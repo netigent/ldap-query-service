@@ -103,12 +103,13 @@ namespace Netigent.Utils.Ldap
         /// <param name="defaultUserDomain">(Optional) If a value e.g. myorg is supplied then, Login will ignore supplied  </param>
         public LdapQueryService(string serverDns, string searchBase, int port = 636, bool useSSL = false, string defaultUserDomain = "")
         {
-            _config = new LdapConfig {  
-                FullDNS = serverDns, 
-                Port = port, 
-                UseSSL = useSSL, 
-                SearchBase = searchBase, 
-                UserLoginDomain = defaultUserDomain 
+            _config = new LdapConfig
+            {
+                FullDNS = serverDns,
+                Port = port,
+                UseSSL = useSSL,
+                SearchBase = searchBase,
+                UserLoginDomain = defaultUserDomain
             };
 
             Debug.WriteLine($"Ldap Authentication: Connecting to {_config.FullDNS}:{_config.Port} SSL={_config.UseSSL.ToString()}");
@@ -137,7 +138,7 @@ namespace Netigent.Utils.Ldap
                 return false;
             }
 
-            return Login(_config.UserLoginDomain, username, password, out errorMessage);      
+            return Login(_config.UserLoginDomain, username, password, out errorMessage);
         }
 
         /// <summary>
@@ -148,13 +149,24 @@ namespace Netigent.Utils.Ldap
         /// <param name="password"></param>
         /// <param name="errorMessage"></param>
         /// <returns></returns>
-        public bool Login(string domain, string username, string password, out string errorMessage)
+        public bool Login(string domain, string username, string password, out string errorMessage, string serviceAccount = "", string serviceKey = "")
         {
             LoggedIn = false;
             errorMessage = string.Empty;
 
             try
             {
+                // This could be a failed callback
+                if (!string.IsNullOrEmpty(serviceAccount) && !string.IsNullOrEmpty(serviceKey) && username.Contains('@'))
+                {
+                    _connection.Bind(new NetworkCredential(serviceAccount, serviceKey));
+                    username = GetUser(LdapQueryAttribute.mail, username)?.SamAccountName;
+                }
+                else if(username.Contains('\\') || username.Contains('@'))
+                {
+                    username = username.Contains('@') ? username.Split('@')[0] : username.Split('\\')[1];
+                }
+
                 //Try connecting as username + password
                 string userDomain = !string.IsNullOrEmpty(_config.UserLoginDomain) ? _config.UserLoginDomain : domain;
                 Debug.WriteLine($"Ldap Authentication: Binding as {userDomain}\\{username}");
@@ -223,6 +235,9 @@ namespace Netigent.Utils.Ldap
                     break;
                 case LdapQueryAttribute.displayName:
                     userQueryString = string.Format(Constants.filterFindUserByDisplayname, userString);
+                    break;
+                case LdapQueryAttribute.mail:
+                    userQueryString = string.Format(Constants.filterFindUserByEmail, userString);
                     break;
                 default:
                     return default;

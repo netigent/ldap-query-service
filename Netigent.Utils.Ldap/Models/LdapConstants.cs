@@ -49,7 +49,8 @@
 		public static string filterFindGroupByGuid = "(&(objectClass=group)(objectGUID={0}))";
 
 		public static string filterAllUsers = "(&(objectCategory=person)(objectCategory=user))";
-		public static string filterFindUserByDisplayname = "(&(objectClass=person)(objectCategory=user)(displayName={0}))";
+        public static string filterFindUserByEmail = "(&(objectClass=person)(objectCategory=user)(mail={0}))";
+        public static string filterFindUserByDisplayname = "(&(objectClass=person)(objectCategory=user)(displayName={0}))";
 		public static string filterFindUserByDn = "(&(objectClass=person)(objectCategory=user)(distinguishedName={0}))";
 		public static string filterFindUserBySam = "(&(objectCategory=person)(objectClass=user)(sAMAccountName={0}))";
 		public static string filterFindUserByGuid = "(&(objectClass=person)(objectCategory=user)(objectGUID={0}))";

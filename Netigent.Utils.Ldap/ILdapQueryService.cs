@@ -11,10 +11,10 @@ namespace Netigent.Utils.Ldap
 
 		//Login Operation
 		bool Login(string username, string password, out string errorMessage);
-		bool Login(string domain, string username, string password, out string errorMessage);
+		bool Login(string domain, string username, string password, out string errorMessage, string serviceAccount = "", string serviceKey = "");
 
-		//Users
-		LdapUser GetUser();
+        //Users
+        LdapUser GetUser();
 		List<LdapUser> GetUsers();
 		LdapUser GetUser(LdapQueryAttribute userQueryType, string userString);
 
