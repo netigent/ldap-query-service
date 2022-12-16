@@ -343,7 +343,6 @@ namespace Netigent.Utils.Ldap
         public bool ResetUserLDAPPassword(string dsName, string newPassword, out bool unmetRequirements)
         {
             unmetRequirements = false;
-            return true;
             try
             {
                 DirectoryAttributeModification modifyUserPassword = new DirectoryAttributeModification();
