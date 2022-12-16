@@ -340,5 +340,32 @@ namespace Netigent.Utils.Ldap
             return results;
         }
 
+        public bool ResetUserLDAPPassword(string dsName, string newPassword, out bool unmetRequirements)
+        {
+            unmetRequirements = false;
+            return true;
+            try
+            {
+                DirectoryAttributeModification modifyUserPassword = new DirectoryAttributeModification();
+                modifyUserPassword.Operation = DirectoryAttributeOperation.Replace;
+                modifyUserPassword.Name = "userPassword";
+                modifyUserPassword.Add(newPassword);
+
+                ModifyRequest modifyRequest = new ModifyRequest(dsName, modifyUserPassword);
+                ModifyResponse modResponse = (ModifyResponse)_connection.SendRequest(modifyRequest);
+
+                return modResponse.ResultCode == ResultCode.Success;
+            }
+            catch (DirectoryOperationException ex)
+            {
+                if (ex.Response.ErrorMessage.StartsWith("0000052D"))
+                {
+                    unmetRequirements = true;
+                }
+            }
+
+            return false;
+        }
+
     }
 }

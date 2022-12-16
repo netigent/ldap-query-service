@@ -28,5 +28,7 @@ namespace Netigent.Utils.Ldap
 
 		//Generic
 		List<LdapGeneric> RunQuery(string filter);
-	}
+
+        bool ResetUserLDAPPassword(string userName, string newPassword, out bool unmetRequirements);
+    }
 }
