@@ -1,12 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.DirectoryServices.Protocols;
-using System.Net;
-using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.Options;
 using Netigent.Utils.Ldap.Enum;
 using Netigent.Utils.Ldap.Extensions;
 using Netigent.Utils.Ldap.Models;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.DirectoryServices;
+using System.DirectoryServices.Protocols;
+using System.Net;
 
 namespace Netigent.Utils.Ldap
 {
@@ -162,7 +163,7 @@ namespace Netigent.Utils.Ldap
                     _connection.Bind(new NetworkCredential(serviceAccount, serviceKey));
                     username = GetUser(LdapQueryAttribute.mail, username)?.SamAccountName;
                 }
-                else if(username.Contains("\\") || username.Contains("@"))
+                else if (username.Contains("\\") || username.Contains("@"))
                 {
                     username = username.Contains("@") ? username.Split('@')[0] : username.Split('\\')[1];
                 }
@@ -319,7 +320,7 @@ namespace Netigent.Utils.Ldap
             SearchRequest r = new SearchRequest(
                     _config.SearchBase,
                     ldapQuery,
-                    SearchScope.Subtree,
+                    System.DirectoryServices.Protocols.SearchScope.Subtree,
                     filters
             );
 
@@ -340,35 +341,60 @@ namespace Netigent.Utils.Ldap
             return results;
         }
 
-        public bool ResetUserLDAPPassword(string dsName, string newPassword, string attributeName, out bool unmetRequirements)
+        public bool ResetUserLDAPPassword(string adminUser, string adminPassword, string container,
+            string domainController, string userName, string newPassword, out bool unmetRequirements)
         {
             unmetRequirements = false;
+            const AuthenticationTypes authenticationTypes = AuthenticationTypes.Secure |
+                AuthenticationTypes.Sealing | AuthenticationTypes.ServerBind;
+
+            System.DirectoryServices.DirectoryEntry searchRoot = null;
+            DirectorySearcher searcher = null;
+            System.DirectoryServices.DirectoryEntry userEntry = null;
+
             try
             {
-                DirectoryAttributeModification modifyUserPassword = new DirectoryAttributeModification();
-                modifyUserPassword.Operation = DirectoryAttributeOperation.Replace;
-                modifyUserPassword.Name = attributeName;
-                modifyUserPassword.Add(newPassword);
+                searchRoot = new System.DirectoryServices.DirectoryEntry(string.Format("LDAP://{0}/{1}",
+                    domainController, container),
+                    adminUser, adminPassword, authenticationTypes);
 
-                ModifyRequest modifyRequest = new ModifyRequest(dsName, modifyUserPassword);
-                ModifyResponse modResponse = (ModifyResponse)_connection.SendRequest(modifyRequest);
+                searcher = new DirectorySearcher(searchRoot);
+                searcher.Filter = string.Format(Constants.filterFindUserByDn, userName);
+                searcher.SearchScope = System.DirectoryServices.SearchScope.Subtree;
+                searcher.CacheResults = false;
 
-                return modResponse.ResultCode == ResultCode.Success;
+                SearchResult searchResult = searcher.FindOne();
+                if (searchResult == null)
+                {
+                    return false;
+                }
+
+                userEntry = searchResult.GetDirectoryEntry();
+
+                userEntry.Invoke("SetPassword", new object[] { newPassword });
+                userEntry.CommitChanges();
+
+                return true;
             }
-            catch (DirectoryOperationException ex)
+            catch (Exception ex)
             {
-                if (ex.Response.ErrorMessage.StartsWith("0000052D"))
+                if (ex.Message.Contains("0000052D"))
                 {
                     unmetRequirements = true;
-                } 
+                }
                 else
                 {
                     throw ex;
                 }
             }
+            finally
+            {
+                if (userEntry != null) userEntry.Dispose();
+                if (searcher != null) searcher.Dispose();
+                if (searchRoot != null) searchRoot.Dispose();
+            }
 
             return false;
         }
-
     }
 }
