@@ -360,6 +360,10 @@ namespace Netigent.Utils.Ldap
                 if (ex.Response.ErrorMessage.StartsWith("0000052D"))
                 {
                     unmetRequirements = true;
+                } 
+                else
+                {
+                    throw ex;
                 }
             }
 
