@@ -208,23 +208,31 @@ namespace Netigent.Utils.Ldap.Extensions
 			if (searchResult.Attributes.Contains(Constants.whenChanged))
 				output.Modified = searchResult.Attributes[Constants.whenChanged].ParseValue<DateTime>();
 
-			if (searchResult.Attributes.Contains(Constants.sn))
-				output.Surname = searchResult.Attributes[Constants.sn].ParseValue<string>();
-			else
+			try
 			{
-				var lastBreak = output.DisplayName.LastIndexOf(" ");
-				var surname = output.DisplayName.Substring(lastBreak + 1, output.DisplayName.Length - (lastBreak + 1));
-				output.Surname = surname;
+				if (searchResult.Attributes.Contains(Constants.sn))
+					output.Surname = searchResult.Attributes[Constants.sn].ParseValue<string>();
+				else
+				{
+					var lastBreak = output.DisplayName.LastIndexOf(" ");
+					var surname = output.DisplayName.Substring(lastBreak + 1, output.DisplayName.Length - (lastBreak + 1));
+					output.Surname = surname;
+				}
 			}
+			catch { }
 
-			if (searchResult.Attributes.Contains(Constants.givenName))
-				output.Firstname = searchResult.Attributes[Constants.givenName].ParseValue<string>();
-			else
+			try
 			{
-				var lastBreak = output.DisplayName.LastIndexOf(" ");
-				var firstname = output.DisplayName.Substring(0, lastBreak);
-				output.Firstname = firstname;
+				if (searchResult.Attributes.Contains(Constants.givenName))
+					output.Firstname = searchResult.Attributes[Constants.givenName].ParseValue<string>();
+				else
+				{
+					var lastBreak = output.DisplayName.LastIndexOf(" ");
+					var firstname = output.DisplayName.Substring(0, lastBreak);
+					output.Firstname = firstname;
+				}
 			}
+			catch { }
 
 			if (searchResult.Attributes.Contains(Constants.sAMAccountName))
 				output.SamAccountName = searchResult.Attributes[Constants.sAMAccountName].ParseValue<string>();
