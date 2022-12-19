@@ -340,14 +340,14 @@ namespace Netigent.Utils.Ldap
             return results;
         }
 
-        public bool ResetUserLDAPPassword(string dsName, string newPassword, out bool unmetRequirements)
+        public bool ResetUserLDAPPassword(string dsName, string newPassword, string attributeName, out bool unmetRequirements)
         {
             unmetRequirements = false;
             try
             {
                 DirectoryAttributeModification modifyUserPassword = new DirectoryAttributeModification();
                 modifyUserPassword.Operation = DirectoryAttributeOperation.Replace;
-                modifyUserPassword.Name = "userPassword";
+                modifyUserPassword.Name = attributeName;
                 modifyUserPassword.Add(newPassword);
 
                 ModifyRequest modifyRequest = new ModifyRequest(dsName, modifyUserPassword);
