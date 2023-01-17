@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.DirectoryServices;
 using System.DirectoryServices.Protocols;
 using System.Net;
+using System.Threading.Tasks;
 
 namespace Netigent.Utils.Ldap
 {
@@ -131,15 +132,15 @@ namespace Netigent.Utils.Ldap
         /// <param name="password"></param>
         /// <param name="errorMessage"></param>
         /// <returns></returns>
-        public bool Login(string username, string password, out string errorMessage)
+        public async Task<LoginResult> Login(string username, string password)
         {
             if (string.IsNullOrEmpty(_config.UserLoginDomain))
             {
-                errorMessage = "No Default Domain Supplied";
-                return false;
+                LoginResult loginResult = new LoginResult { ErrorMessage = "No Default Domain Supplied" };
+                return loginResult;
             }
 
-            return Login(_config.UserLoginDomain, username, password, out errorMessage);
+            return await Login(_config.UserLoginDomain, username, password);
         }
 
         /// <summary>
@@ -150,49 +151,86 @@ namespace Netigent.Utils.Ldap
         /// <param name="password"></param>
         /// <param name="errorMessage"></param>
         /// <returns></returns>
-        public bool Login(string domain, string username, string password, out string errorMessage, string serviceAccount = "", string serviceKey = "")
+        public async Task<LoginResult> Login(string domain, string username, string password, string serviceAccount = "", string serviceKey = "")
         {
+            LoginResult loginResult = new LoginResult();
             LoggedIn = false;
-            errorMessage = string.Empty;
 
             try
             {
-                // This could be a failed callback
-                if (!string.IsNullOrEmpty(serviceAccount) && !string.IsNullOrEmpty(serviceKey) && username.Contains("@"))
-                {
-                    _connection.Bind(new NetworkCredential(serviceAccount, serviceKey));
-                    username = GetUser(LdapQueryAttribute.mail, username)?.SamAccountName;
-                }
-                else if (username.Contains("\\") || username.Contains("@"))
-                {
-                    username = username.Contains("@") ? username.Split('@')[0] : username.Split('\\')[1];
-                }
+                Exception lastException = null;
 
-                //Try connecting as username + password
-                string userDomain = !string.IsNullOrEmpty(_config.UserLoginDomain) ? _config.UserLoginDomain : domain;
-                Debug.WriteLine($"Ldap Authentication: Binding as {userDomain}\\{username}");
-                _connection.Bind(new NetworkCredential(username, password, userDomain));
+                for (int attempts = 0; attempts < _config.MaxLDAPAttempts; attempts++)
+                {
+                    try {
+                        // This could be a failed callback
+                        if (!string.IsNullOrEmpty(serviceAccount) && !string.IsNullOrEmpty(serviceKey) && username.Contains("@"))
+                        {
+                            _connection.Bind(new NetworkCredential(serviceAccount, serviceKey));
+                            username = GetUser(LdapQueryAttribute.mail, username)?.SamAccountName;
+                        }
+                        else if (username.Contains("\\") || username.Contains("@"))
+                        {
+                            username = username.Contains("@") ? username.Split('@')[0] : username.Split('\\')[1];
+                        }
 
-                User = GetUser(LdapQueryAttribute.sAMAccountName, username);
-                LoggedIn = true;
+                        //Try connecting as username + password
+                        string userDomain = !string.IsNullOrEmpty(_config.UserLoginDomain) ? _config.UserLoginDomain : domain;
+                        Debug.WriteLine($"Ldap Authentication: Binding as {userDomain}\\{username}");
+                        _connection.Bind(new NetworkCredential(username, password, userDomain));
+
+                        User = GetUser(LdapQueryAttribute.sAMAccountName, username);
+                        LoggedIn = true;
+                    }
+                    catch (Exception exception)
+                    {
+                        lastException = exception;
+                        if (exception.IsLdapServerUnavailable())
+                        {
+                            // Check if within allowed max attempts
+                            // Also check if should build in time delay
+                            if (_config.LdapDelay > 0)
+                            {
+                                await Task.Delay(_config.LdapDelay);
+                            }
+                            else
+                            {
+                                // Immediate retry
+                            }
+                        }
+                        else
+                        {
+                            // Only return for server unavailable exceptions
+                            lastException = exception;
+                            break;
+                        }
+                    }
+
+                    if (lastException != null)
+                    {
+                        // Ran out of allowed attempts so throw last exception to allow containing code to deal with it.
+                        throw lastException;
+                    }
+                }
             }
             catch (ObjectDisposedException ode)
             {
-                errorMessage = $"ObjectDisposedException: {ode.Message} ( {ode.InnerException?.Message} )";
+                loginResult.ErrorMessage = $"ObjectDisposedException: {ode.Message} ( {ode.InnerException?.Message} )";
                 Debug.WriteLine($"Ldap Authentication: ObjectDisposedException {ode.Message} ( {ode.InnerException?.Message} ), Stack: {ode.StackTrace}");
             }
             catch (LdapException le)
             {
-                errorMessage = $"{le.Message}";
+                loginResult.ErrorMessage = $"{le.Message}";
                 Debug.WriteLine($"Ldap Authentication: LdapException {le.Message} ( {le.InnerException?.Message} ), Stack: {le.StackTrace}");
             }
             catch (InvalidOperationException ioe)
             {
-                errorMessage = $"InvalidOperationException: {ioe.Message} ( {ioe.InnerException?.Message} )";
+                loginResult.ErrorMessage = $"InvalidOperationException: {ioe.Message} ( {ioe.InnerException?.Message} )";
                 Debug.WriteLine($"Ldap Authentication: InvalidOperationException {ioe.Message} ( {ioe.InnerException?.Message} ), Stack: {ioe.StackTrace}");
             }
 
-            return LoggedIn;
+            loginResult.Result = LoggedIn;
+            return loginResult;
         }
 
         public void Dispose()
@@ -378,7 +416,7 @@ namespace Netigent.Utils.Ldap
             }
             catch (Exception ex)
             {
-                if (ex.Message.Contains("0000052D"))
+                if (ex.Message.Contains("800708C5"))
                 {
                     unmetRequirements = true;
                 }

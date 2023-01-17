@@ -1,6 +1,7 @@
 ﻿using Netigent.Utils.Ldap.Enum;
 using Netigent.Utils.Ldap.Models;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Netigent.Utils.Ldap
 {
@@ -10,8 +11,8 @@ namespace Netigent.Utils.Ldap
 		bool LoggedIn { get; }
 
 		//Login Operation
-		bool Login(string username, string password, out string errorMessage);
-		bool Login(string domain, string username, string password, out string errorMessage, string serviceAccount = "", string serviceKey = "");
+		Task<LoginResult> Login(string username, string password);
+		Task<LoginResult> Login(string domain, string username, string password, string serviceAccount = "", string serviceKey = "");
 
         //Users
         LdapUser GetUser();
