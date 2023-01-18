@@ -160,7 +160,7 @@ namespace Netigent.Utils.Ldap
             {
                 Exception lastException = null;
 
-                for (int attempts = 0; attempts < _config.MaxLDAPAttempts; attempts++)
+                for (int attempts = 0; attempts < _config.LDAPMaxAttempts; attempts++)
                 {
                     try {
                         // This could be a failed callback
@@ -189,9 +189,9 @@ namespace Netigent.Utils.Ldap
                         {
                             // Check if within allowed max attempts
                             // Also check if should build in time delay
-                            if (_config.LdapDelay > 0)
+                            if (_config.LDAPDelay > 0)
                             {
-                                await Task.Delay(_config.LdapDelay);
+                                await Task.Delay(_config.LDAPDelay);
                             }
                             else
                             {

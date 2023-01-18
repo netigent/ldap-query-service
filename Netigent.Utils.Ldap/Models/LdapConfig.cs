@@ -16,11 +16,11 @@
         /// Max number of times to try login against LDAP when unavailable returned 
         /// before giving up.
         /// </summary>
-        public int MaxLDAPAttempts { get; set; }
+        public int LDAPMaxAttempts { get; set; }
 
         /// <summary>
         /// Period to delay next attempt in milliseconds
         /// </summary>
-        public int LdapDelay { get; set; }
+        public int LDAPDelay { get; set; }
     }
 }
