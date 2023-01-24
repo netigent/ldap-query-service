@@ -13,7 +13,7 @@ namespace Netigent.Utils.Ldap.Extensions
             }
             else
             {
-                return exception.Message.ToLower().Contains("unavailable", StringComparison.InvariantCultureIgnoreCase);
+                return exception.Message.ToLower().Contains("unavailable");
             }
         }
     }
