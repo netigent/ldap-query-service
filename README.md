@@ -7,7 +7,7 @@ Initially thanks for considering using this library - we hope that it gives you 
 In terms of using the Library the following should get you up and running quickly
 
 # Version Changes
-**1.0.15** Added LDAP Functionality
+**1.0.16** Added LDAP Functionality
 ***ResetUserLDAPPassword***: The ability in Windows Directory to Reset Password, must use serviceAccount (adminAccount), and serviceKey (adminPassword)
 ***Login***: Updated to allow login via Email attribute, requires serviceAccount (adminAccount), and serviceKey (adminPassword) as email may differ from UPN
 
@@ -26,9 +26,11 @@ In terms of using the Library the following should get you up and running quickl
     "Port": 636,
     "SearchBase": "OU=AADDC Users,DC=myorg,DC=com",
     "UseSSL": false,
-    "UserLoginDomain": "MyDefaultDomain", (Optional)
-	"MaxTries": 1, (Optional)
-	"RetryDelayMs": 300, (Optional)
+    "UserLoginDomain": "MyDefaultDomain",				// (Optional)
+	"MaxTries": 1,										// (Optional) Number of times to try logging, ONLY if LDAP reports unavailable, due to outage
+	"RetryDelayMs": 300,								// (Optional) If retrying, how long to wait in MS
+    "ServiceAccount": "mydomain\specialLdapAccount",	// (Optional) Not directly used by Nuget, Handy for use in your project via DI, you provide this by other ways if you wish
+    "ServiceKey": "myserviceaccountpassword1123132"		// (Optional) Not directly used by Nuget, Handy for use in your project via DI, you provide this by other ways if you wish
   },
 ```
   
