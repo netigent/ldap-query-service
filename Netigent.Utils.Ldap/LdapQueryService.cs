@@ -160,21 +160,24 @@ namespace Netigent.Utils.Ldap
             LoginResult loginResult = new LoginResult();
             LoggedIn = false;
 
+            int maxTries = _config.MaxTries > 0 ? _config.MaxTries : 1;
+            int retryDelay = _config.RetryDelayMs >= 0 ? _config.RetryDelayMs : 300;
+
             try
             {
                 Exception lastException = null;
 
-                for (int attempts = 0; attempts < _config.MaxTries; attempts++)
+                for (int attempts = 0; attempts < maxTries; attempts++)
                 {
                     try
                     {
                         // This could be a failed callback
-                        if (!string.IsNullOrEmpty(serviceAccount) && !string.IsNullOrEmpty(serviceKey) && username.Contains('@'))
+                        if (!string.IsNullOrEmpty(serviceAccount) && !string.IsNullOrEmpty(serviceKey) && username.Contains("@"))
                         {
                             _connection.Bind(new NetworkCredential(serviceAccount, serviceKey));
                             username = GetUser(LdapQueryAttribute.mail, username)?.SamAccountName;
                         }
-                        else if (username.Contains('\\') || username.Contains('@'))
+                        else if (username.Contains("\\") || username.Contains("@"))
                         {
                             username = username.Contains("@") ? username.Split('@')[0] : username.Split('\\')[1];
                         }
@@ -193,9 +196,9 @@ namespace Netigent.Utils.Ldap
                         if (exception.IsLdapServerUnavailable())
                         {
                             // Also check if should build in time delay
-                            if (_config.RetryDelayMs > 0)
+                            if (retryDelay > 0)
                             {
-                                await Task.Delay(_config.RetryDelayMs);
+                                await Task.Delay(retryDelay);
                             }
                         }
                         else
