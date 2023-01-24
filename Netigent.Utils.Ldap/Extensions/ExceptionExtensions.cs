@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Netigent.Utils.Ldap.Extensions
 {
@@ -16,7 +13,7 @@ namespace Netigent.Utils.Ldap.Extensions
             }
             else
             {
-                return exception.Message.ToLower().Contains("unavailable");
+                return exception.Message.ToLower().Contains("unavailable", StringComparison.InvariantCultureIgnoreCase);
             }
         }
     }

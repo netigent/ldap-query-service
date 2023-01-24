@@ -7,6 +7,10 @@ Initially thanks for considering using this library - we hope that it gives you 
 In terms of using the Library the following should get you up and running quickly
 
 # Version Changes
+**1.0.15** Added LDAP Functionality
+***ResetUserLDAPPassword***: The ability in Windows Directory to Reset Password, must use serviceAccount (adminAccount), and serviceKey (adminPassword)
+***Login***: Updated to allow login via Email attribute, requires serviceAccount (adminAccount), and serviceKey (adminPassword) as email may differ from UPN
+
 **1.0.3** Extended the user/person query result to give extra properties
 ***Login Related***: LastLogon, LogonCount, LockoutTime, PwdLastSet 
 ***Job Related***: ManagerCn, Company, EmployeeID, JobTitle, Department 
@@ -22,7 +26,9 @@ In terms of using the Library the following should get you up and running quickl
     "Port": 636,
     "SearchBase": "OU=AADDC Users,DC=myorg,DC=com",
     "UseSSL": false,
-    "UserLoginDomain": "MyDefaultDomain (Optional)"
+    "UserLoginDomain": "MyDefaultDomain", (Optional)
+	"MaxTries": 1, (Optional)
+	"RetryDelayMs": 300, (Optional)
   },
 ```
   

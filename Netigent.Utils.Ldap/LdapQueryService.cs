@@ -103,7 +103,9 @@ namespace Netigent.Utils.Ldap
         /// <param name="port">Default LDAP Port 636 used</param>
         /// <param name="useSSL">Connect with SSL</param>
         /// <param name="defaultUserDomain">(Optional) If a value e.g. myorg is supplied then, Login will ignore supplied  </param>
-        public LdapQueryService(string serverDns, string searchBase, int port = 636, bool useSSL = false, string defaultUserDomain = "")
+        /// <param name="maxTries">(Optional) Max Tries if LDAP is unavailable.</param>
+        /// <param name="retryDelayMs">(Optional) Delay between Retry in MS</param>
+        public LdapQueryService(string serverDns, string searchBase, int port = 636, bool useSSL = false, string defaultUserDomain = "", int maxTries = 1, int retryDelayMs = 300)
         {
             _config = new LdapConfig
             {
@@ -111,7 +113,9 @@ namespace Netigent.Utils.Ldap
                 Port = port,
                 UseSSL = useSSL,
                 SearchBase = searchBase,
-                UserLoginDomain = defaultUserDomain
+                UserLoginDomain = defaultUserDomain,
+                MaxTries = maxTries,
+                RetryDelayMs = retryDelayMs,
             };
 
             Debug.WriteLine($"Ldap Authentication: Connecting to {_config.FullDNS}:{_config.Port} SSL={_config.UseSSL.ToString()}");
@@ -160,16 +164,17 @@ namespace Netigent.Utils.Ldap
             {
                 Exception lastException = null;
 
-                for (int attempts = 0; attempts < _config.LDAPMaxAttempts; attempts++)
+                for (int attempts = 0; attempts < _config.MaxTries; attempts++)
                 {
-                    try {
+                    try
+                    {
                         // This could be a failed callback
-                        if (!string.IsNullOrEmpty(serviceAccount) && !string.IsNullOrEmpty(serviceKey) && username.Contains("@"))
+                        if (!string.IsNullOrEmpty(serviceAccount) && !string.IsNullOrEmpty(serviceKey) && username.Contains('@'))
                         {
                             _connection.Bind(new NetworkCredential(serviceAccount, serviceKey));
                             username = GetUser(LdapQueryAttribute.mail, username)?.SamAccountName;
                         }
-                        else if (username.Contains("\\") || username.Contains("@"))
+                        else if (username.Contains('\\') || username.Contains('@'))
                         {
                             username = username.Contains("@") ? username.Split('@')[0] : username.Split('\\')[1];
                         }
@@ -187,15 +192,10 @@ namespace Netigent.Utils.Ldap
                         lastException = exception;
                         if (exception.IsLdapServerUnavailable())
                         {
-                            // Check if within allowed max attempts
                             // Also check if should build in time delay
-                            if (_config.LDAPDelay > 0)
+                            if (_config.RetryDelayMs > 0)
                             {
-                                await Task.Delay(_config.LDAPDelay);
-                            }
-                            else
-                            {
-                                // Immediate retry
+                                await Task.Delay(_config.RetryDelayMs);
                             }
                         }
                         else
@@ -227,6 +227,11 @@ namespace Netigent.Utils.Ldap
             {
                 loginResult.ErrorMessage = $"InvalidOperationException: {ioe.Message} ( {ioe.InnerException?.Message} )";
                 Debug.WriteLine($"Ldap Authentication: InvalidOperationException {ioe.Message} ( {ioe.InnerException?.Message} ), Stack: {ioe.StackTrace}");
+            }
+            catch (Exception ex)
+            {
+                loginResult.ErrorMessage = $"Exception: {ex.Message} ( {ex.InnerException?.Message} )";
+                Debug.WriteLine($"Ldap Authentication: InvalidOperationException {ex.Message} ( {ex.InnerException?.Message} ), Stack: {ex.StackTrace}");
             }
 
             loginResult.Result = LoggedIn;
@@ -379,22 +384,22 @@ namespace Netigent.Utils.Ldap
             return results;
         }
 
-        public bool ResetUserLDAPPassword(string adminUser, string adminPassword, string container,
+        public bool ResetUserLDAPPassword(string serviceAccount, string serviceKey, string container,
             string domainController, string userName, string newPassword, out bool unmetRequirements)
         {
             unmetRequirements = false;
             const AuthenticationTypes authenticationTypes = AuthenticationTypes.Secure |
                 AuthenticationTypes.Sealing | AuthenticationTypes.ServerBind;
 
-            System.DirectoryServices.DirectoryEntry searchRoot = null;
+            DirectoryEntry searchRoot = null;
             DirectorySearcher searcher = null;
-            System.DirectoryServices.DirectoryEntry userEntry = null;
+            DirectoryEntry userEntry = null;
 
             try
             {
-                searchRoot = new System.DirectoryServices.DirectoryEntry(string.Format("LDAP://{0}/{1}",
+                searchRoot = new DirectoryEntry(string.Format("LDAP://{0}/{1}",
                     domainController, container),
-                    adminUser, adminPassword, authenticationTypes);
+                    serviceAccount, serviceKey, authenticationTypes);
 
                 searcher = new DirectorySearcher(searchRoot);
                 searcher.Filter = string.Format(Constants.filterFindUserByDn, userName);

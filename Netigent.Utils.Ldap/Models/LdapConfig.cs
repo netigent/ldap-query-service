@@ -9,18 +9,15 @@
 		public bool UseSSL { get; set; }
         public string UserLoginDomain { get; set; }
 
-        public string ServiceAccount { get; set; } = string.Empty;
-        public string ServiceKey { get; set; } = string.Empty;
-
         /// <summary>
         /// Max number of times to try login against LDAP when unavailable returned 
         /// before giving up.
         /// </summary>
-        public int LDAPMaxAttempts { get; set; }
+        public int MaxTries { get; set; } = 1;
 
         /// <summary>
         /// Period to delay next attempt in milliseconds
         /// </summary>
-        public int LDAPDelay { get; set; }
+        public int RetryDelayMs { get; set; } = 300;
     }
 }
