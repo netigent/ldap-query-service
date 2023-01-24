@@ -162,6 +162,7 @@ namespace Netigent.Utils.Ldap
 
             int maxTries = _config.MaxTries > 0 ? _config.MaxTries : 1;
             int retryDelay = _config.RetryDelayMs >= 0 ? _config.RetryDelayMs : 300;
+            string sAMAccountName = string.Empty;
 
             try
             {
@@ -175,25 +176,32 @@ namespace Netigent.Utils.Ldap
                         if (!string.IsNullOrEmpty(serviceAccount) && !string.IsNullOrEmpty(serviceKey) && username.Contains("@"))
                         {
                             _connection.Bind(new NetworkCredential(serviceAccount, serviceKey));
-                            username = GetUser(LdapQueryAttribute.mail, username)?.SamAccountName;
+                            sAMAccountName = GetUser(LdapQueryAttribute.mail, username)?.SamAccountName;
+
+                            if (string.IsNullOrEmpty(sAMAccountName))
+                            {
+                                throw new Exception($"NoAccount: Couldnt an account using email '{username}'");
+                            }
                         }
                         else if (username.Contains("\\") || username.Contains("@"))
                         {
-                            username = username.Contains("@") ? username.Split('@')[0] : username.Split('\\')[1];
+                            sAMAccountName = username.Contains("@") ? username.Split('@')[0] : username.Split('\\')[1];
                         }
 
                         //Try connecting as username + password
                         string userDomain = !string.IsNullOrEmpty(_config.UserLoginDomain) ? _config.UserLoginDomain : domain;
-                        Debug.WriteLine($"Ldap Authentication: Binding as {userDomain}\\{username}");
-                        _connection.Bind(new NetworkCredential(username, password, userDomain));
 
-                        User = GetUser(LdapQueryAttribute.sAMAccountName, username);
+                        Debug.WriteLine($"Ldap Authentication: Binding as {userDomain}\\{sAMAccountName}");
+
+                        _connection.Bind(new NetworkCredential(sAMAccountName, password, userDomain));
+                        User = GetUser(LdapQueryAttribute.sAMAccountName, sAMAccountName);
+
                         LoggedIn = true;
                     }
                     catch (Exception exception)
                     {
-                        lastException = exception;
-                        if (exception.IsLdapServerUnavailable())
+                        // LDAP unavailable and no retry remaining.
+                        if (exception.IsLdapServerUnavailable() && attempts < (maxTries - 1))
                         {
                             // Also check if should build in time delay
                             if (retryDelay > 0)
@@ -208,12 +216,12 @@ namespace Netigent.Utils.Ldap
                             break;
                         }
                     }
+                }
 
-                    if (lastException != null)
-                    {
-                        // Ran out of allowed attempts so throw last exception to allow containing code to deal with it.
-                        throw lastException;
-                    }
+                if (lastException != null)
+                {
+                    // Ran out of allowed attempts so throw last exception to allow containing code to deal with it.
+                    throw lastException;
                 }
             }
             catch (ObjectDisposedException ode)
