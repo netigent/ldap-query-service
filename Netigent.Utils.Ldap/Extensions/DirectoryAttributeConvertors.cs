@@ -86,7 +86,7 @@ namespace Netigent.Utils.Ldap.Extensions
                     //633896886277130000
                     long timeInterval = Convert.ToInt64(datestring);
                     outTime = new DateTime(timeInterval);
-                    if(outTime.Year < 1000)
+                    if (outTime.Year < 1000)
                     {
                         outTime = DateTime.FromFileTime(timeInterval);
                     }
@@ -110,6 +110,9 @@ namespace Netigent.Utils.Ldap.Extensions
             }
 
             else if (typeof(T) == typeof(int))
+                return (T)Convert.ChangeType(Encoding.UTF8.GetString(byteSID), typeof(T));
+
+            else if (typeof(T) == typeof(long))
                 return (T)Convert.ChangeType(Encoding.UTF8.GetString(byteSID), typeof(T));
 
             return default;

@@ -36,16 +36,16 @@ namespace Netigent.Utils.Ldap
             var groupQueryString = string.Empty;
             switch (groupQueryType)
             {
-                case LdapQueryAttribute.sAMAccountName:
+                case LdapQueryAttribute.SamAccountName:
                     groupQueryString = string.Format(LdapFilter.FindGroupBySam, groupString);
                     break;
-                case LdapQueryAttribute.distinguishedName:
+                case LdapQueryAttribute.Dn:
                     groupQueryString = string.Format(LdapFilter.FindGroupByDn, groupString);
                     break;
-                case LdapQueryAttribute.objectGUID:
+                case LdapQueryAttribute.ObjectId:
                     groupQueryString = string.Format(LdapFilter.FindGroupByGuid, groupString);
                     break;
-                case LdapQueryAttribute.displayName:
+                case LdapQueryAttribute.DisplayName:
                     groupQueryString = string.Format(LdapFilter.FindGroupByDisplayname, groupString);
                     break;
                 default:

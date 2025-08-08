@@ -147,7 +147,7 @@ namespace Netigent.Utils.Ldap.Extensions
             }
 
             if (searchResult.Attributes.Contains(LdapAttribute.LockoutTime))
-                output.LockoutTime = searchResult.Attributes[LdapAttribute.LockoutTime].ParseValue<int>();
+                output.LockoutTime = searchResult.Attributes[LdapAttribute.LockoutTime].ParseValue<long>();
 
             if (searchResult.Attributes.Contains(LdapAttribute.LogonCount))
                 output.LogonCount = searchResult.Attributes[LdapAttribute.LogonCount].ParseValue<int>();

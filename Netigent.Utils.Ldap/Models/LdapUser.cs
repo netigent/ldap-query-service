@@ -26,7 +26,7 @@ namespace Netigent.Utils.Ldap.Models
 
         //Login Related
         public DateTime? LastLogon { get; set; }
-        public int LockoutTime { get; set; } = 0;
+        public long LockoutTime { get; set; } = 0;
         public string PwdLastSet { get; set; }
         public int LogonCount { get; set; } = 0;
         public DateTime Created { get; set; }

@@ -5,9 +5,10 @@ using Netigent.Utils.Ldap.Models;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.DirectoryServices;
 using System.DirectoryServices.Protocols;
+using System.Linq;
 using System.Net;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace Netigent.Utils.Ldap
@@ -232,135 +233,78 @@ namespace Netigent.Utils.Ldap
             }
         }
 
-        /// <summary>
-        /// Modifies an LDAP entry.
-        /// </summary>
-        /// <param name="dn">cn=John Doe,ou=Users,dc=example,dc=com</param>
-        /// <param name="directoryAttributes"></param>
-        /// <returns></returns>
         private LdapResult ModifyLdap(string dn, IList<DirectoryAttribute> directoryAttributes)
         {
-
-            string newUsername = "testuser";
-            string firstName = "Test";
-            string lastName = "User";
-            string userPassword = "SecurePassword123!";
-            string ldapPath = $"LDAP://{_config.FullDNS}:{_config.Port}/OU=AADDC Users,DC=ibks,DC=co";
-            using (DirectoryEntry directoryEntry = new DirectoryEntry(ldapPath, _config.ServiceAccount, _config.ServiceKey))
-            {
-                DirectoryEntry newUser = directoryEntry.Children.Add($"CN={firstName} {lastName}", "user");
-
-                // Set user properties
-                newUser.Properties["userPrincipalName"].Value = $"{newUsername}@ibks.co";
-                newUser.Properties["sAMAccountName"].Value = newUsername;
-                newUser.Properties["givenName"].Value = firstName;
-                newUser.Properties["sn"].Value = lastName;
-                newUser.Properties["displayName"].Value = $"{firstName} {lastName}";
-                newUser.Properties["description"].Value = "Test user created via C#";
-
-                // Enable the account (userAccountControl: 512 = normal account, enabled)
-                newUser.Properties["userAccountControl"].Value = 512;
-
-                // Commit changes to create the user
-                newUser.CommitChanges();
-
-                // Set the password
-                newUser.Invoke("SetPassword", new object[] { userPassword });
-
-                // Commit password change
-                newUser.CommitChanges();
-
-                Console.WriteLine("User created successfully!");
-            }
-
-
-
-            string dn2 = "CN=James O'Neill,OU=AADDC Users,DC=ibks,DC=co";
-            string host = "corp.ibks.co";
-            int port = 636;
-
-            var identifier = new LdapDirectoryIdentifier(host, port, true, false);
-            var credential = new NetworkCredential(_config.ServiceAccount, _config.ServiceKey);
-
-            using var connection = new LdapConnection(identifier, credential, AuthType.Basic)
-            {
-                SessionOptions =
-                {
-                    SecureSocketLayer = true,
-                    ProtocolVersion = 3
-                }
-            };
-
-            connection.Bind(); // Throws LdapException if there's a problem
-            Console.WriteLine("Successfully bound");
-
-            // Now, to modify an attribute:
-            var request = new ModifyRequest(
-                dn,
-                DirectoryAttributeOperation.Replace,
-                    //"userAccountControl",
-                    //"544"
-                    "description",
-    "Test update from LdapConnection"
-            );
-
-
-            DirectoryResponse response = _connection.SendRequest(request);
-
-            DirectoryEntry entry = null;
             try
             {
-                // Bind to the object using DirectoryEntry
-                const AuthenticationTypes authenticationTypes = AuthenticationTypes.Secure |
-                AuthenticationTypes.Sealing | AuthenticationTypes.ServerBind;
-
-                // (SearchLdap(string.Format(LdapFilter.FindGroupByDn, dn), AttributeList.User)[0]).
-
-                entry = new DirectoryEntry($"LDAPS://{this._config.FullDNS}:{this._config.Port}/{dn}", _config.ServiceAccount, _config.ServiceKey, authenticationTypes);
-
-                // Iterate over each DirectoryAttribute
-                foreach (var directoryAttribute in directoryAttributes)
+                // Process each attribute
+                foreach (var attr in directoryAttributes)
                 {
-                    // Skipping certain attributes like UserPrincipalName and SAMAccountName
-                    if (
-                        directoryAttribute.Name == LdapAttribute.UserPrincipalName
-                        || directoryAttribute.Name == LdapAttribute.SAMAccountName)
+                    // Special case: password changes
+                    if (attr.Name.Equals(LdapAttribute.UnicodePassword, StringComparison.OrdinalIgnoreCase))
                     {
-                        continue;
+                        // AD expects password in UTF-16 with quotes
+                        string password = attr[0].ToString();
+                        byte[] pwdBytes = Encoding.Unicode.GetBytes($"\"{password}\"");
+
+                        var pwdRequest = new ModifyRequest(
+                            dn,
+                            DirectoryAttributeOperation.Replace,
+                            LdapAttribute.UnicodePassword,
+                            pwdBytes
+                        );
+
+                        var pwdResponse = (ModifyResponse)_connection.SendRequest(pwdRequest);
+
+                        if (pwdResponse.ResultCode != ResultCode.Success)
+                        {
+                            return new LdapResult
+                            {
+                                Success = false,
+                                Message = $"Password change failed: {pwdResponse.ResultCode} - {pwdResponse.ErrorMessage}"
+                            };
+                        }
+
+                        continue; // Skip to next attribute
                     }
 
-                    // Retrieve attribute value as a string
-                    string attributeValue = GetAttributeValue(directoryAttribute);
-
-                    // Handle password updates (needs to be Unicode bytes)
-                    if (directoryAttribute.Name == LdapAttribute.UnicodePassword)
+                    // For normal attributes
+                    var modAttr = new DirectoryAttribute(attr.Name);
+                    foreach (var val in attr)
                     {
-                        // Set password using the 'Invoke' method for password-related attributes
-                        entry.Invoke("SetPassword", new object[] { attributeValue });
+                        if (val is byte[] bytes)
+                        {
+                            modAttr.Add(bytes);
+                        }
+                        else if (val != null)
+                        {
+                            modAttr.Add(val.ToString());
+                        }
                     }
-                    else
+
+                    var request = new ModifyRequest(
+                        dn,
+                        DirectoryAttributeOperation.Replace,
+                        attr.Name,
+                        attr.Cast<object>().ToArray()
+                    );
+
+                    var response = (ModifyResponse)_connection.SendRequest(request);
+
+                    if (response.ResultCode != ResultCode.Success)
                     {
-                        // Check if the attribute already exists in the DirectoryEntry
-                        if (entry.Properties.Contains(directoryAttribute.Name))
+                        return new LdapResult
                         {
-                            // Replace the existing value
-                            entry.Properties[directoryAttribute.Name].Value = attributeValue;
-                        }
-                        else
-                        {
-                            // Add new attribute if it doesn't exist
-                            entry.Properties[directoryAttribute.Name].Add(attributeValue);
-                        }
+                            Success = false,
+                            Message = $"Modify failed for {attr.Name}: {response.ResultCode} - {response.ErrorMessage}"
+                        };
                     }
                 }
-
-                // Commit the changes to the DirectoryEntry
-                entry.CommitChanges();
 
                 return new LdapResult
                 {
                     Success = true,
-                    Message = "Modification successful."
+                    Message = "All modifications successful."
                 };
             }
             catch (Exception ex)
@@ -371,78 +315,6 @@ namespace Netigent.Utils.Ldap
                     Message = ex.Message
                 };
             }
-            finally
-            {
-                if (entry != null)
-                {
-                    entry.Dispose();
-                }
-            }
-
-            /*
-            try
-            {
-                // Grab existing object, with just attributes we're trying to mod
-                // This way we can tell if we're doing replace / add
-                SearchResultEntry existing = SearchLdap(
-                        string.Format(LdapFilter.AllByDn, dn),
-                        directoryAttributes.Select(x => x.Name).ToArray())[0];
-
-                // Lets Build the modify request
-                ModifyRequest modifyRequest = new ModifyRequest(dn);
-
-                // Convert each DirectoryAttribute into DirectoryAttributeModification
-                foreach (DirectoryAttribute directoryAttribute in directoryAttributes)
-                {
-                    // Skipped Items from Modify Request
-                    if (directoryAttribute.Name == LdapAttribute.UserPrincipalName
-                        || directoryAttribute.Name == LdapAttribute.SAMAccountName)
-                    {
-                        continue;
-                    }
-
-                    // Grab String Value
-                    string attributeValue = GetAttributeValue(directoryAttribute);
-
-                    // Build Modification
-                    DirectoryAttributeModification modAttribute = new DirectoryAttributeModification
-                    {
-                        Name = directoryAttribute.Name,
-                        Operation = existing.Attributes.Contains(directoryAttribute.Name)
-                            ? DirectoryAttributeOperation.Replace
-                            : DirectoryAttributeOperation.Add,
-                    };
-
-                    // Seems a few keys need to be byte
-                    if (directoryAttribute.Name == LdapAttribute.UnicodePassword)
-                    {
-                        modAttribute.Add(Encoding.Unicode.GetBytes(attributeValue));
-                    }
-                    else
-                    {
-                        modAttribute.Add(attributeValue);
-                    }
-
-                    // Append to request
-                    modifyRequest.Modifications.Add(modAttribute);
-                }
-
-                DirectoryResponse modifyResponse = _connection.SendRequest(modifyRequest) as ModifyResponse;
-                return new LdapResult
-                {
-                    Success = modifyResponse.ResultCode == ResultCode.Success,
-                    Message = modifyResponse.ErrorMessage,
-                };
-            }
-            catch (Exception ex)
-            {
-                return new LdapResult
-                {
-                    Success = false,
-                    Message = ex.Message,
-                };
-            }
-            */
         }
 
         /// <summary>
@@ -466,21 +338,6 @@ namespace Netigent.Utils.Ldap
 
             Debug.WriteLine($"Result Count = {sr.Entries.Count}");
             return sr.Entries;
-        }
-
-        /// <summary>
-        /// Get Value.
-        /// </summary>
-        /// <param name="attribute"></param>
-        /// <returns></returns>
-        private string GetAttributeValue(DirectoryAttribute attribute)
-        {
-            if (attribute == null || attribute.Count == 0)
-            {
-                return string.Empty;
-            }
-
-            return attribute[0].ToString();
         }
         #endregion
     }

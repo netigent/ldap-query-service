@@ -6,7 +6,13 @@ namespace Netigent.Utils.Ldap
 {
     public interface ILdapQueryService
     {
-        //Login Operation
+        /// <summary>
+        /// Attempt to Bind as User.
+        /// </summary>
+        /// <param name="username">Supply either user.name, user.principal@mydomain.com, users.email@domain.com</param>
+        /// <param name="password"></param>
+        /// <param name="domain">Default Domain Override? e.g. MyWorkDomain - if you login as MyWorkDomain\user.name</param>
+        /// <returns></returns>
         LdapResult<LdapUser> UserLogin(string username, string password, string domain = "");
 
         //Users
@@ -14,7 +20,7 @@ namespace Netigent.Utils.Ldap
         LdapUser? GetUser(LdapQueryAttribute userQueryType, string userString);
         LdapResult EnableAndUnlockUser(string username);
         LdapResult DisableUser(string username);
-        LdapResult UpsertUser(string userName, string password, string email, string displayName, string managerDn = "");
+        LdapResult UpsertUser(string username, string password, string email, string displayName, string managerDn = "");
 
         //Groups
         IList<LdapGroup>? GetGroups();

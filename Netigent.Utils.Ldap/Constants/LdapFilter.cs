@@ -16,5 +16,6 @@
         public const string FindUserByDn = "(&(objectClass=person)(objectCategory=user)(distinguishedName={0}))";
         public const string FindUserBySam = "(&(objectCategory=person)(objectClass=user)(sAMAccountName={0}))";
         public const string FindUserByGuid = "(&(objectClass=person)(objectCategory=user)(objectGUID={0}))";
+        public const string FindUserByUpn = "(&(objectClass=person)(objectCategory=user)(userPrincipalName={0}))";
     }
 }

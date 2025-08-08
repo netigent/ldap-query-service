@@ -1,11 +1,12 @@
 ﻿namespace Netigent.Utils.Ldap.Enum
 {
-	public enum LdapQueryAttribute
-	{
-		sAMAccountName,
-		distinguishedName,
-		objectGUID,
-		displayName,
-		mail
-	}
+    public enum LdapQueryAttribute
+    {
+        SamAccountName,
+        Dn,
+        ObjectId,
+        DisplayName,
+        Email,
+        Upn
+    }
 }

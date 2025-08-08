@@ -13,45 +13,22 @@ namespace Netigent.Utils.Ldap
         /// <inheritdoc />
         public LdapResult<LdapUser> UserLogin(string username, string password, string domain = "")
         {
-            // Lets figure the username
-            LdapUser? user = null;
-
-            // Is this an email if so do we have a serviceAccount?
-            if (username.Contains("@") && _hasServiceAccount)
+            // Get User.
+            LdapResult<LdapUser> userResult = FindUser(username);
+            if (!userResult.Success || userResult.Data == null)
             {
-                // Attempting to find via mail
-                user = GetUser(LdapQueryAttribute.mail, username);
-
-                // Could be a servicePrincipal - lets remove the end as thats the domain part
-                if (user == null)
-                {
-                    user = GetUser(LdapQueryAttribute.sAMAccountName, username.Split('@')[0]);
-                }
+                return userResult;
             }
-
-            // Determine the username
-            string loginAsName = user != null
-                ? user?.SamAccountName ?? string.Empty // If matching account was found, use that
-                : username.Contains("@") // If no matching account - but has a @ e.g. john.bloggs@mycompany.com
-                    ? username.Split('@')[0] // Take 1st part as possible username
-                    : username.Contains("\\") // If user is presented as mycompany\john.bloggs
-                        ? username.Split('\\')[1] // Take last part
-                        : username; // Otherwise treat username as-is e.g. john.bloggs
 
             // Users Connection
             LdapConnection userConnection = BuildConnection();
-            LdapResult userResult = BindConnection(new NetworkCredential(
-                userName: $"{_config.UserLoginDomain}\\{loginAsName}",
+            LdapResult loginResult = BindConnection(new NetworkCredential(
+                userName: $"{(domain?.Length > 0 ? domain : _config.UserLoginDomain)}\\{userResult.Data.SamAccountName}",
                 password: password),
                 userConnection);
 
             if (userResult.Success)
             {
-                // Figure out the UserAccount
-                user = user ?? (_hasServiceAccount // No, but do you have the serviceAccount?
-                        ? GetUser(LdapQueryAttribute.sAMAccountName, loginAsName) // Get Account using Service Account
-                        : GetUser(LdapQueryAttribute.sAMAccountName, username, userConnection)); // Get Account with Users Own Connection
-
                 // Tidy the user connection.
                 userConnection.Dispose();
 
@@ -60,7 +37,7 @@ namespace Netigent.Utils.Ldap
                 {
                     Success = userResult.Success,
                     Message = userResult.Message,
-                    Data = user,
+                    Data = userResult.Data,
                 };
             }
 
@@ -94,36 +71,18 @@ namespace Netigent.Utils.Ldap
             => GetUser(userQueryType, userString, null);
 
         /// <inheritdoc />
-        public LdapResult UpsertUser(string userName, string password, string email, string displayName, string managerDn = "")
+        public LdapResult UpsertUser(string username, string password, string email, string displayName, string managerDn = "")
         {
-            if (!_hasServiceAccount)
-            {
-                return new LdapResult
-                {
-                    Success = false,
-                    Message = "ServiceAccount, Not Configured",
-                };
-            }
-
-            if (string.IsNullOrEmpty(userName) || string.IsNullOrEmpty(password))
-            {
-                return new LdapResult
-                {
-                    Success = false,
-                    Message = "Missing Arguments",
-                };
-            }
-
-            // Does user exist?
-            LdapUser? ldapUser = GetUser(LdapQueryAttribute.sAMAccountName, userName);
+            // Get User.
+            LdapResult<LdapUser> userResult = FindUser(username);
 
             // Set attributes for the user
             IList<DirectoryAttribute> directoryAttributes = new List<DirectoryAttribute>()
             {
-                new DirectoryAttribute(LdapAttribute.SAMAccountName, userName),
+                new DirectoryAttribute(LdapAttribute.SAMAccountName, username),
                 new DirectoryAttribute("userPassword", password),
-                new DirectoryAttribute(LdapAttribute.DisplayName, displayName?.Length > 0 ? displayName : userName),
-                new DirectoryAttribute(LdapAttribute.UserPrincipalName,$"{userName}@{_config.UserLoginDomain}"),
+                new DirectoryAttribute(LdapAttribute.DisplayName, displayName?.Length > 0 ? displayName : username),
+                new DirectoryAttribute(LdapAttribute.UserPrincipalName,$"{username}@{_config.UserLoginDomain}"),
             };
 
             // Optional Attributes
@@ -138,46 +97,25 @@ namespace Netigent.Utils.Ldap
             }
 
             // Update or Add?
-            if (ldapUser == null)
+            if (!userResult.Success || userResult.Data == null)
             {
                 string dn = $"CN={displayName},{_config.SearchBase}";
                 return AddLdap(dn, LdapObject.User, directoryAttributes);
             }
             else
             {
-                return ModifyLdap(ldapUser.DistinguishedName, directoryAttributes);
+                return ModifyLdap(userResult.Data.DistinguishedName, directoryAttributes);
             }
         }
 
         /// <inheritdoc />
         public LdapResult ResetPassword(string username, string newPassword)
         {
-            if (!_hasServiceAccount)
+            // Get User.
+            LdapResult<LdapUser> userResult = FindUser(username);
+            if (!userResult.Success || userResult.Data == null)
             {
-                return new LdapResult
-                {
-                    Success = false,
-                    Message = "ServiceAccount, Not Configured",
-                };
-            }
-
-            if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(newPassword))
-            {
-                return new LdapResult
-                {
-                    Success = false,
-                    Message = "Missing Arguments",
-                };
-            }
-
-            LdapUser? ldapUser = GetUser(LdapQueryAttribute.sAMAccountName, username);
-            if (ldapUser == null)
-            {
-                return new LdapResult
-                {
-                    Success = false,
-                    Message = "User Not Found",
-                };
+                return new LdapResult { Message = userResult.Message };
             }
 
             // Set attributes for the new user
@@ -187,42 +125,21 @@ namespace Netigent.Utils.Ldap
                 new DirectoryAttribute(LdapAttribute.UnicodePassword, $"\"{newPassword}\""), // UnicodePwd is Microsoft and is a quoted string
             };
 
-            return ModifyLdap(ldapUser.DistinguishedName, directoryAttributes);
+            return ModifyLdap(userResult.Data.DistinguishedName, directoryAttributes);
         }
 
         /// <inheritdoc />
         public LdapResult DisableUser(string username)
         {
-            if (!_hasServiceAccount)
+            // Get User.
+            LdapResult<LdapUser> userResult = FindUser(username);
+            if (!userResult.Success || userResult.Data == null)
             {
-                return new LdapResult
-                {
-                    Success = false,
-                    Message = "ServiceAccount, Not Configured",
-                };
-            }
-
-            if (string.IsNullOrEmpty(username))
-            {
-                return new LdapResult
-                {
-                    Success = false,
-                    Message = "Missing Arguments",
-                };
-            }
-
-            LdapUser? ldapUser = GetUser(LdapQueryAttribute.sAMAccountName, username);
-            if (ldapUser == null)
-            {
-                return new LdapResult
-                {
-                    Success = false,
-                    Message = "User Not Found",
-                };
+                return new LdapResult { Message = userResult.Message };
             }
 
             // Force to bit
-            UserAccountControl userAccountControl = (UserAccountControl)ldapUser.UserAccountControl;
+            UserAccountControl userAccountControl = (UserAccountControl)userResult.Data.UserAccountControl;
 
             // This gets a comma separated string of the flag names that apply.
             string userAccountControlFlagNames = userAccountControl.ToString();
@@ -248,43 +165,21 @@ namespace Netigent.Utils.Ldap
                 new DirectoryAttribute(LdapAttribute.UserAccountControl, ((int)newUserAccountControl).ToString()), // Modify userAccountControl to disable account
             };
 
-            return ModifyLdap(ldapUser.DistinguishedName, directoryAttributes);
+            return ModifyLdap(userResult.Data.DistinguishedName, directoryAttributes);
         }
 
         /// <inheritdoc />
         public LdapResult EnableAndUnlockUser(string username)
         {
-            if (!_hasServiceAccount)
+            // Get User.
+            LdapResult<LdapUser> userResult = FindUser(username);
+            if (!userResult.Success || userResult.Data == null)
             {
-                return new LdapResult
-                {
-                    Success = false,
-                    Message = "ServiceAccount, Not Configured",
-                };
-            }
-
-            if (string.IsNullOrEmpty(username))
-            {
-                return new LdapResult
-                {
-                    Success = false,
-                    Message = "Missing Arguments",
-                };
-            }
-
-            // Find the user
-            LdapUser? ldapUser = GetUser(LdapQueryAttribute.sAMAccountName, username);
-            if (ldapUser == null)
-            {
-                return new LdapResult
-                {
-                    Success = false,
-                    Message = "User Not Found",
-                };
+                return new LdapResult { Message = userResult.Message };
             }
 
             // Retrieve current userAccountControl flags
-            UserAccountControl userAccountControl = (UserAccountControl)ldapUser.UserAccountControl;
+            UserAccountControl userAccountControl = (UserAccountControl)userResult.Data.UserAccountControl;
 
             // Check if account is already enabled and unlocked
             bool isAccountDisabled = (userAccountControl & UserAccountControl.ACCOUNTDISABLE) == UserAccountControl.ACCOUNTDISABLE;
@@ -309,7 +204,7 @@ namespace Netigent.Utils.Ldap
             };
 
             // Send the modification request to LDAP
-            return ModifyLdap(ldapUser.DistinguishedName, directoryAttributes);
+            return ModifyLdap(userResult.Data.DistinguishedName, directoryAttributes);
         }
 
         #region Internal
@@ -323,20 +218,23 @@ namespace Netigent.Utils.Ldap
             var userQueryString = string.Empty;
             switch (userQueryType)
             {
-                case LdapQueryAttribute.sAMAccountName:
+                case LdapQueryAttribute.SamAccountName:
                     userQueryString = string.Format(LdapFilter.FindUserBySam, userString);
                     break;
-                case LdapQueryAttribute.distinguishedName:
+                case LdapQueryAttribute.Dn:
                     userQueryString = string.Format(LdapFilter.FindUserByDn, userString);
                     break;
-                case LdapQueryAttribute.objectGUID:
+                case LdapQueryAttribute.ObjectId:
                     userQueryString = string.Format(LdapFilter.FindUserByGuid, userString);
                     break;
-                case LdapQueryAttribute.displayName:
+                case LdapQueryAttribute.DisplayName:
                     userQueryString = string.Format(LdapFilter.FindUserByDisplayname, userString);
                     break;
-                case LdapQueryAttribute.mail:
+                case LdapQueryAttribute.Email:
                     userQueryString = string.Format(LdapFilter.FindUserByEmail, userString);
+                    break;
+                case LdapQueryAttribute.Upn:
+                    userQueryString = string.Format(LdapFilter.FindUserByUpn, userString);
                     break;
                 default:
                     return default;
@@ -347,6 +245,73 @@ namespace Netigent.Utils.Ldap
                 return result[0].ToUserResult();
 
             return default;
+        }
+
+        /// <summary>
+        /// Supply either user.name, user.principal@mydomain.com, users.email@domain.com, uses ServiceAccount.
+        /// </summary>
+        /// <param name="username"></param>
+        /// <returns></returns>
+        private LdapResult<LdapUser> FindUser(string username)
+        {
+            if (!_hasServiceAccount)
+            {
+                return new LdapResult<LdapUser>
+                {
+                    Success = false,
+                    Message = "ServiceAccount, Not Configured",
+                };
+            }
+
+            if (string.IsNullOrEmpty(username))
+            {
+                return new LdapResult<LdapUser>
+                {
+                    Success = false,
+                    Message = "Missing Arguments",
+                };
+            }
+
+            // Lets figure the username
+            LdapUser? user = null;
+
+            // Is this an email if so do we have a serviceAccount?
+            if (username.Contains("@"))
+            {
+                // Attempting to find via UPN
+                user = GetUser(LdapQueryAttribute.Upn, username);
+
+                // Attempt to find via email.
+                if (user == null) user = GetUser(LdapQueryAttribute.Email, username);
+            }
+
+            if (user == null)
+            {
+                // Determine the username
+                string loginAsName = username.Contains("@") // If account has a @ e.g. john.bloggs@mycompany.com
+                        ? username.Split('@')[0] // Take 1st part as possible username
+                        : username.Contains("\\") // If user is presented as mycompany\john.bloggs
+                            ? username.Split('\\')[1] // Take last part
+                            : username; // Otherwise treat username as-is e.g. john.bloggs
+
+                user = GetUser(LdapQueryAttribute.SamAccountName, loginAsName);
+            }
+
+            if (user != null)
+            {
+                return new LdapResult<LdapUser>
+                {
+                    Success = true,
+                    Data = user,
+                    Message = "Found User",
+                };
+            }
+
+
+            return new LdapResult<LdapUser>
+            {
+                Message = $"Couldnt find '{username}', checked UPN, Email, SAM"
+            };
         }
 
         #endregion
