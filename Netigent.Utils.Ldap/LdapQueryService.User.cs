@@ -81,7 +81,7 @@ namespace Netigent.Utils.Ldap
             }
 
             IList<LdapUser> results = new List<LdapUser>();
-            foreach (SearchResultEntry r in SearchLdap(string.Format(LdapFilter.AllUsers), AttributeList.User))
+            foreach (SearchResultEntry r in SearchLdap(string.Format(LdapFilter.AllUsers), SupportedAttributes.User))
             {
                 results.Add(r.ToUserResult());
             }
@@ -342,7 +342,7 @@ namespace Netigent.Utils.Ldap
                     return default;
             }
 
-            var result = SearchLdap(userQueryString, AttributeList.User);
+            var result = SearchLdap(userQueryString, SupportedAttributes.User);
             if (result.Count > 0)
                 return result[0].ToUserResult();
 

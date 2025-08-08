@@ -19,7 +19,7 @@ namespace Netigent.Utils.Ldap
 
             IList<LdapGroup> results = new List<LdapGroup>();
 
-            foreach (SearchResultEntry r in SearchLdap(string.Format(LdapFilter.AllGroups), AttributeList.Group))
+            foreach (SearchResultEntry r in SearchLdap(string.Format(LdapFilter.AllGroups), SupportedAttributes.Group))
                 results.Add(r.ToGroupResult());
 
             return results;
@@ -52,7 +52,7 @@ namespace Netigent.Utils.Ldap
                     return default;
             }
 
-            var result = SearchLdap(groupQueryString, AttributeList.Group);
+            var result = SearchLdap(groupQueryString, SupportedAttributes.Group);
             if (result.Count > 0)
                 return result[0].ToGroupResult();
 
