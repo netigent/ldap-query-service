@@ -1,35 +1,34 @@
 ﻿using Netigent.Utils.Ldap.Enum;
 using Netigent.Utils.Ldap.Models;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace Netigent.Utils.Ldap
 {
-	public interface ILdapQueryService
-	{
-		//Login flag
-		bool LoggedIn { get; }
-
-		//Login Operation
-		Task<LoginResult> Login(string username, string password);
-		Task<LoginResult> Login(string domain, string username, string password, string serviceAccount = "", string serviceKey = "");
+    public interface ILdapQueryService
+    {
+        //Login Operation
+        LdapResult<LdapUser> UserLogin(string username, string password, string domain = "");
 
         //Users
-        LdapUser GetUser();
-		List<LdapUser> GetUsers();
-		LdapUser GetUser(LdapQueryAttribute userQueryType, string userString);
+        IList<LdapUser>? GetUsers();
+        LdapUser? GetUser(LdapQueryAttribute userQueryType, string userString);
+        LdapResult EnableAndUnlockUser(string username);
+        LdapResult DisableUser(string username);
+        LdapResult UpsertUser(string userName, string password, string email, string displayName, string managerDn = "");
 
-		//Groups
-        List<LdapGroup> GetGroups();
-		LdapGroup GetGroup(LdapQueryAttribute groupQueryType, string groupString);
+        //Groups
+        IList<LdapGroup>? GetGroups();
+        LdapGroup? GetGroup(LdapQueryAttribute groupQueryType, string groupString);
 
-		//Memebership
-		bool MemberOf(LdapQueryAttribute groupQueryType, string groupString);
-		bool MemberOf(LdapQueryAttribute userQueryType, string userString, LdapQueryAttribute groupQueryType, string groupString);
+        //Memebership
+        // bool MemberOf(LdapQueryAttribute groupQueryType, string groupString);
+        bool MemberOf(LdapQueryAttribute userQueryType, string userString, LdapQueryAttribute groupQueryType, string groupString);
 
-		//Generic
-		List<LdapGeneric> RunQuery(string filter);
+        //Generic
+        IList<LdapGeneric> RunSearchQuery(string filter);
 
-        bool ResetUserLDAPPassword(string serviceAccount, string serviceKey, string container, string domainController, string userName, string newPassword, out bool unmetRequirements);
+        LdapResult ResetPassword(string username, string newPassword);
+
+
     }
 }
