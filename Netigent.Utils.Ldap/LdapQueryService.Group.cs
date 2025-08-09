@@ -26,7 +26,7 @@ namespace Netigent.Utils.Ldap
         }
 
         /// <inheritdoc />
-        public LdapGroup? GetGroup(LdapQueryAttribute groupQueryType, string groupString)
+        public LdapGroup? GetGroup(string groupName, LdapQueryAttribute groupQueryType = LdapQueryAttribute.DisplayName)
         {
             if (!_hasServiceAccount)
             {
@@ -37,16 +37,16 @@ namespace Netigent.Utils.Ldap
             switch (groupQueryType)
             {
                 case LdapQueryAttribute.SamAccountName:
-                    groupQueryString = string.Format(LdapFilter.FindGroupBySam, groupString);
+                    groupQueryString = string.Format(LdapFilter.FindGroupBySam, groupName);
                     break;
                 case LdapQueryAttribute.Dn:
-                    groupQueryString = string.Format(LdapFilter.FindGroupByDn, groupString);
+                    groupQueryString = string.Format(LdapFilter.FindGroupByDn, groupName);
                     break;
                 case LdapQueryAttribute.ObjectId:
-                    groupQueryString = string.Format(LdapFilter.FindGroupByGuid, groupString);
+                    groupQueryString = string.Format(LdapFilter.FindGroupByGuid, groupName);
                     break;
                 case LdapQueryAttribute.DisplayName:
-                    groupQueryString = string.Format(LdapFilter.FindGroupByDisplayname, groupString);
+                    groupQueryString = string.Format(LdapFilter.FindGroupByDisplayname, groupName);
                     break;
                 default:
                     return default;
@@ -60,22 +60,20 @@ namespace Netigent.Utils.Ldap
         }
 
         /// <inheritdoc />
-        public bool MemberOf(LdapQueryAttribute userQueryType, string userString, LdapQueryAttribute groupQueryType, string groupString)
+        public bool MemberOf(string username, string groupName, LdapQueryAttribute groupQueryType = LdapQueryAttribute.DisplayName)
         {
-            if (!_hasServiceAccount)
+            // Get User.
+            LdapResult<LdapUser> userResult = FindUser(username);
+            if (!userResult.Success || userResult.Data == null || userResult.Data.MemberOf?.Count == 0)
             {
                 return false;
             }
 
-            var ldapUser = GetUser(userQueryType, userString);
-            if (ldapUser == null || ldapUser == default || ldapUser?.MemberOf?.Count == 0)
-                return false;
-
-            var ldapGroup = GetGroup(groupQueryType, groupString);
+            var ldapGroup = GetGroup(groupName, groupQueryType);
             if (ldapGroup == null || ldapGroup == default || string.IsNullOrEmpty(ldapGroup?.DistinguishedName))
                 return false;
 
-            return ldapUser.MemberOf.Contains(ldapGroup.DistinguishedName);
+            return userResult.Data.MemberOf.Contains(ldapGroup.DistinguishedName);
         }
     }
 }

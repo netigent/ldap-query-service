@@ -24,11 +24,8 @@ namespace Netigent.Utils.Ldap
 
         //Groups
         IList<LdapGroup>? GetGroups();
-        LdapGroup? GetGroup(LdapQueryAttribute groupQueryType, string groupString);
-
-        //Memebership
-        // bool MemberOf(LdapQueryAttribute groupQueryType, string groupString);
-        bool MemberOf(LdapQueryAttribute userQueryType, string userString, LdapQueryAttribute groupQueryType, string groupString);
+        LdapGroup? GetGroup(string groupName, LdapQueryAttribute groupQueryType = LdapQueryAttribute.DisplayName);
+        bool MemberOf(string username, string groupName, LdapQueryAttribute groupQueryType = LdapQueryAttribute.DisplayName);
 
         //Generic
         IList<LdapGeneric> RunSearchQuery(string filter);

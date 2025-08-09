@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Options;
 using Netigent.Utils.Ldap.Constants;
+using Netigent.Utils.Ldap.Enum;
 using Netigent.Utils.Ldap.Extensions;
 using Netigent.Utils.Ldap.Models;
 using System;
@@ -79,8 +80,9 @@ namespace Netigent.Utils.Ldap
                 if (!config.ServiceAccount.Contains("@") && !config.ServiceAccount.Contains("\\"))
                 {
                     _serviceAccount = new NetworkCredential(
-                        userName: $"{config.UserLoginDomain}\\{config.ServiceAccount}",
-                        password: config.ServiceKey);
+                        userName: config.ServiceAccount,
+                        password: config.ServiceKey,
+                        domain: config.UserLoginDomain);
                 }
                 else
                 {
@@ -187,41 +189,118 @@ namespace Netigent.Utils.Ldap
         /// <returns></returns>
         private LdapConnection BuildConnection()
         {
-            LdapConnection connection = new LdapConnection($"{_config.FullDNS}:{_config.Port}");
+            var identifier = new LdapDirectoryIdentifier(_config.FullDNS, _config.Port, true, false);
+            LdapConnection connection = new LdapConnection(identifier);
             connection.SessionOptions.SecureSocketLayer = _config.UseSSL;
             connection.SessionOptions.ProtocolVersion = 3;
-            connection.AuthType = AuthType.Basic;
+            connection.SessionOptions.ReferralChasing = ReferralChasingOptions.All;
+            connection.SessionOptions.VerifyServerCertificate += (conn, cert) => true;
+            connection.AuthType = AuthType.Negotiate;
 
             return connection;
         }
 
         /// <summary>
-        /// Adds an LDAP entry.
+        /// Saves LDAP entry.
         /// </summary>
         /// <param name="dn">cn=John Doe,ou=Users,dc=example,dc=com</param>
         /// <param name="objectClass">user or group</param>
         /// <param name="directoryAttributes"></param>
         /// <returns></returns>
-        private LdapResult AddLdap(string dn, string objectClass, IList<DirectoryAttribute> directoryAttributes)
+        private LdapResult SaveLdap(string dn, LdapObjectType objectType, IList<DirectoryAttribute> directoryAttributes)
         {
+            // Exisiting? 
+            bool isExisting = objectType == LdapObjectType.Group
+                ? (GetGroup(dn, LdapQueryAttribute.Dn)?.DistinguishedName ?? string.Empty) == dn
+                : (GetUser(LdapQueryAttribute.Dn, dn)?.DistinguishedName ?? string.Empty) == dn;
+
             try
             {
-                AddRequest addRequest = new AddRequest(dn, objectClass);
-
-                // Set attributes for the new user
-                foreach (DirectoryAttribute directoryAttribute in directoryAttributes)
+                if (!isExisting)
                 {
-                    addRequest.Attributes.Add(directoryAttribute);
+                    AddRequest addRequest = new AddRequest(dn, objectType == LdapObjectType.Group ? LdapObject.Group : LdapObject.User);
+
+                    // Set attributes for the new user
+                    foreach (DirectoryAttribute attr in directoryAttributes)
+                    {
+                        // Special case: password changes
+                        if (attr.Name.Equals(LdapAttribute.UnicodePassword, StringComparison.OrdinalIgnoreCase))
+                        {
+                            // AD expects password in UTF-16 with quotes
+                            string password = attr[0].ToString();
+                            byte[] pwdBytes = Encoding.Unicode.GetBytes($"\"{password}\"");
+                            addRequest.Attributes.Add(new DirectoryAttribute(LdapAttribute.UnicodePassword, pwdBytes));
+                        }
+                        else
+                        {
+                            addRequest.Attributes.Add(attr);
+                        }
+                    }
+
+                    // Send the AddRequest to create the user
+                    DirectoryResponse addResponse = _connection.SendRequest(addRequest) as AddResponse;
+
+                    return new LdapResult
+                    {
+                        Success = addResponse.ResultCode == ResultCode.Success,
+                        Message = addResponse.ErrorMessage,
+                    };
                 }
-
-                // Send the AddRequest to create the user
-                DirectoryResponse addResponse = _connection.SendRequest(addRequest) as AddResponse;
-
-                return new LdapResult
+                else
                 {
-                    Success = addResponse.ResultCode == ResultCode.Success,
-                    Message = addResponse.ErrorMessage,
-                };
+                    IList<DirectoryAttributeModification> modifications = new List<DirectoryAttributeModification>();
+
+
+
+                    // Set attributes for the new user
+                    foreach (DirectoryAttribute attr in directoryAttributes)
+                    {
+                        var updateAttribute = new DirectoryAttributeModification
+                        {
+                            Name = attr.Name,
+                            Operation = DirectoryAttributeOperation.Replace,
+                        };
+
+                        // Special case: password changes
+                        if (attr.Name.Equals(LdapAttribute.UnicodePassword, StringComparison.OrdinalIgnoreCase))
+                        {
+                            // AD expects password in UTF-16 with quotes
+                            string password = attr[0].ToString();
+                            byte[] pwdBytes = Encoding.Unicode.GetBytes($"\"{password}\"");
+
+                            // Append Value
+                            updateAttribute.Add(pwdBytes);
+
+
+
+                        }
+                        else
+                        {
+                            foreach (var val in attr)
+                            {
+                                if (val is byte[] bytes)
+                                {
+                                    updateAttribute.Add(bytes);
+                                }
+                                else if (val != null)
+                                {
+                                    updateAttribute.Add(val.ToString());
+                                }
+                            }
+                        }
+
+                        modifications.Add(updateAttribute);
+                    }
+
+                    // Send the AddRequest to create the user
+                    DirectoryResponse modResponse = _connection.SendRequest(new ModifyRequest(dn, modifications.ToArray()));
+
+                    return new LdapResult
+                    {
+                        Success = modResponse.ResultCode == ResultCode.Success,
+                        Message = modResponse.ErrorMessage,
+                    };
+                }
             }
             catch (Exception ex)
             {
@@ -229,90 +308,6 @@ namespace Netigent.Utils.Ldap
                 {
                     Success = false,
                     Message = ex.Message,
-                };
-            }
-        }
-
-        private LdapResult ModifyLdap(string dn, IList<DirectoryAttribute> directoryAttributes)
-        {
-            try
-            {
-                // Process each attribute
-                foreach (var attr in directoryAttributes)
-                {
-                    // Special case: password changes
-                    if (attr.Name.Equals(LdapAttribute.UnicodePassword, StringComparison.OrdinalIgnoreCase))
-                    {
-                        // AD expects password in UTF-16 with quotes
-                        string password = attr[0].ToString();
-                        byte[] pwdBytes = Encoding.Unicode.GetBytes($"\"{password}\"");
-
-                        var pwdRequest = new ModifyRequest(
-                            dn,
-                            DirectoryAttributeOperation.Replace,
-                            LdapAttribute.UnicodePassword,
-                            pwdBytes
-                        );
-
-                        var pwdResponse = (ModifyResponse)_connection.SendRequest(pwdRequest);
-
-                        if (pwdResponse.ResultCode != ResultCode.Success)
-                        {
-                            return new LdapResult
-                            {
-                                Success = false,
-                                Message = $"Password change failed: {pwdResponse.ResultCode} - {pwdResponse.ErrorMessage}"
-                            };
-                        }
-
-                        continue; // Skip to next attribute
-                    }
-
-                    // For normal attributes
-                    var modAttr = new DirectoryAttribute(attr.Name);
-                    foreach (var val in attr)
-                    {
-                        if (val is byte[] bytes)
-                        {
-                            modAttr.Add(bytes);
-                        }
-                        else if (val != null)
-                        {
-                            modAttr.Add(val.ToString());
-                        }
-                    }
-
-                    var request = new ModifyRequest(
-                        dn,
-                        DirectoryAttributeOperation.Replace,
-                        attr.Name,
-                        attr.Cast<object>().ToArray()
-                    );
-
-                    var response = (ModifyResponse)_connection.SendRequest(request);
-
-                    if (response.ResultCode != ResultCode.Success)
-                    {
-                        return new LdapResult
-                        {
-                            Success = false,
-                            Message = $"Modify failed for {attr.Name}: {response.ResultCode} - {response.ErrorMessage}"
-                        };
-                    }
-                }
-
-                return new LdapResult
-                {
-                    Success = true,
-                    Message = "All modifications successful."
-                };
-            }
-            catch (Exception ex)
-            {
-                return new LdapResult
-                {
-                    Success = false,
-                    Message = ex.Message
                 };
             }
         }
@@ -339,6 +334,7 @@ namespace Netigent.Utils.Ldap
             Debug.WriteLine($"Result Count = {sr.Entries.Count}");
             return sr.Entries;
         }
+
         #endregion
     }
 }

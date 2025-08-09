@@ -100,11 +100,11 @@ namespace Netigent.Utils.Ldap
             if (!userResult.Success || userResult.Data == null)
             {
                 string dn = $"CN={displayName},{_config.SearchBase}";
-                return AddLdap(dn, LdapObject.User, directoryAttributes);
+                return SaveLdap(dn, LdapObjectType.User, directoryAttributes);
             }
             else
             {
-                return ModifyLdap(userResult.Data.DistinguishedName, directoryAttributes);
+                return SaveLdap(userResult.Data.DistinguishedName, LdapObjectType.User, directoryAttributes);
             }
         }
 
@@ -125,7 +125,7 @@ namespace Netigent.Utils.Ldap
                 new DirectoryAttribute(LdapAttribute.UnicodePassword, $"\"{newPassword}\""), // UnicodePwd is Microsoft and is a quoted string
             };
 
-            return ModifyLdap(userResult.Data.DistinguishedName, directoryAttributes);
+            return SaveLdap(userResult.Data.DistinguishedName, LdapObjectType.User, directoryAttributes);
         }
 
         /// <inheritdoc />
@@ -165,7 +165,7 @@ namespace Netigent.Utils.Ldap
                 new DirectoryAttribute(LdapAttribute.UserAccountControl, ((int)newUserAccountControl).ToString()), // Modify userAccountControl to disable account
             };
 
-            return ModifyLdap(userResult.Data.DistinguishedName, directoryAttributes);
+            return SaveLdap(userResult.Data.DistinguishedName, LdapObjectType.User, directoryAttributes);
         }
 
         /// <inheritdoc />
@@ -204,7 +204,7 @@ namespace Netigent.Utils.Ldap
             };
 
             // Send the modification request to LDAP
-            return ModifyLdap(userResult.Data.DistinguishedName, directoryAttributes);
+            return SaveLdap(userResult.Data.DistinguishedName, LdapObjectType.User, directoryAttributes);
         }
 
         #region Internal
@@ -285,6 +285,13 @@ namespace Netigent.Utils.Ldap
                 if (user == null) user = GetUser(LdapQueryAttribute.Email, username);
             }
 
+            // Is it a CN pattern?
+            if (user == null && username.Contains("DC="))
+            {
+                user = GetUser(LdapQueryAttribute.Dn, username);
+            }
+
+            // Lets spilt and attempt to find by SAM
             if (user == null)
             {
                 // Determine the username
