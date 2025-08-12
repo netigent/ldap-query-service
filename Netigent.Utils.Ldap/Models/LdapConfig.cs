@@ -1,12 +1,12 @@
 ﻿namespace Netigent.Utils.Ldap.Models
 {
-	public class LdapConfig
+    public class LdapConfig
     {
         public static string Section { get; } = "LDAP";
         public string FullDNS { get; set; }
         public string SearchBase { get; set; }
-        public int Port { get; set; }
-		public bool UseSSL { get; set; }
+        public int Port { get; set; } = 636;
+        public bool UseSSL { get; set; } = true;
         public string UserLoginDomain { get; set; }
 
         // Used to pull from appSettings.json, not directly used by this project

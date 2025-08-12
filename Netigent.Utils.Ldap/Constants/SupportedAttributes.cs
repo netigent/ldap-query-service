@@ -2,9 +2,9 @@
 {
     public static class SupportedAttributes
     {
-        public static string[] User = new[]
-        {
-            LdapAttribute.MemberOf,
+        public static readonly string[] User =
+        [
+            LdapAttribute.MemberOfDn,
             LdapAttribute.DisplayName,
             LdapAttribute.SAMAccountName,
             LdapAttribute.Mail,
@@ -29,7 +29,7 @@
             LdapAttribute.LastLogonTimestamp,
             LdapAttribute.LockoutTime,
             LdapAttribute.LogonCount,
-            LdapAttribute.ManagerCn,
+            LdapAttribute.ManagerDn,
             LdapAttribute.MobilePhone,
             LdapAttribute.OfficeName,
             LdapAttribute.OfficePhone,
@@ -38,10 +38,11 @@
             LdapAttribute.Street,
             LdapAttribute.ZipPostalCode,
             LdapAttribute.UserAccountControl,
-        };
+            LdapAttribute.Description,
+        ];
 
-        public static string[] Group = new[]
-        {
+        public static readonly string[] Group =
+        [
             LdapAttribute.DisplayName,
             LdapAttribute.SAMAccountName,
             LdapAttribute.Objectsid,
@@ -51,6 +52,6 @@
             LdapAttribute.DistinguishedName,
             LdapAttribute.WhenChanged,
             LdapAttribute.WhenCreated
-        };
+        ];
     }
 }

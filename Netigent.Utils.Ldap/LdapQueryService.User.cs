@@ -2,7 +2,9 @@
 using Netigent.Utils.Ldap.Enum;
 using Netigent.Utils.Ldap.Extensions;
 using Netigent.Utils.Ldap.Models;
+using System;
 using System.Collections.Generic;
+using System.DirectoryServices;
 using System.DirectoryServices.Protocols;
 using System.Net;
 
@@ -23,11 +25,12 @@ namespace Netigent.Utils.Ldap
             // Users Connection
             LdapConnection userConnection = BuildConnection();
             LdapResult loginResult = BindConnection(new NetworkCredential(
-                userName: $"{(domain?.Length > 0 ? domain : _config.UserLoginDomain)}\\{userResult.Data.SamAccountName}",
-                password: password),
+                userName: GetPlainUsername(userResult.Data.SamAccountName),
+                password: password,
+                domain: _config.UserLoginDomain),
                 userConnection);
 
-            if (userResult.Success)
+            if (loginResult.Success)
             {
                 // Tidy the user connection.
                 userConnection.Dispose();
@@ -44,8 +47,8 @@ namespace Netigent.Utils.Ldap
             // Return minimal failure, no user account
             return new LdapResult<LdapUser>
             {
-                Success = userResult.Success,
-                Message = userResult.Message,
+                Success = loginResult.Success,
+                Message = loginResult.Message,
             };
         }
 
@@ -71,41 +74,76 @@ namespace Netigent.Utils.Ldap
             => GetUser(userQueryType, userString, null);
 
         /// <inheritdoc />
-        public LdapResult UpsertUser(string username, string password, string email, string displayName, string managerDn = "")
+        public LdapResult UpsertUser(
+            string username,
+            string email,
+            string displayName,
+            string setPassword = "",
+            string company = "",
+            string department = "",
+            string office = "",
+            string jobTitle = "",
+            string managerDn = "",
+            string mobile = "",
+            string description = "",
+            string street = "",
+            string city = "",
+            string zip = ""
+            )
         {
             // Get User.
             LdapResult<LdapUser> userResult = FindUser(username);
 
+            string plainUsername = GetPlainUsername(username);
+
             // Set attributes for the user
             IList<DirectoryAttribute> directoryAttributes = new List<DirectoryAttribute>()
             {
-                new DirectoryAttribute(LdapAttribute.SAMAccountName, username),
-                new DirectoryAttribute("userPassword", password),
-                new DirectoryAttribute(LdapAttribute.DisplayName, displayName?.Length > 0 ? displayName : username),
-                new DirectoryAttribute(LdapAttribute.UserPrincipalName,$"{username}@{_config.UserLoginDomain}"),
+                new DirectoryAttribute(LdapAttribute.DisplayName, displayName),
+                new DirectoryAttribute(LdapAttribute.UserPrincipalName, $"{plainUsername}@{_config.UserLoginDomain}"),
+                new DirectoryAttribute(LdapAttribute.SAMAccountName, plainUsername),
             };
 
-            // Optional Attributes
-            if (managerDn?.Length > 0)
+            // Company
+            if (company?.Length > 0) directoryAttributes.Add(new DirectoryAttribute(LdapAttribute.Company, company));
+            if (department?.Length > 0) directoryAttributes.Add(new DirectoryAttribute(LdapAttribute.Department, department));
+            if (jobTitle?.Length > 0) directoryAttributes.Add(new DirectoryAttribute(LdapAttribute.JobTitle, jobTitle));
+
+            // About
+            if (office?.Length > 0) directoryAttributes.Add(new DirectoryAttribute(LdapAttribute.OfficeName, office));
+            if (description?.Length > 0) directoryAttributes.Add(new DirectoryAttribute(LdapAttribute.Description, description));
+
+            // Location
+            if (street?.Length > 0) directoryAttributes.Add(new DirectoryAttribute(LdapAttribute.Street, street));
+            if (city?.Length > 0) directoryAttributes.Add(new DirectoryAttribute(LdapAttribute.City, city));
+            if (zip?.Length > 0) directoryAttributes.Add(new DirectoryAttribute(LdapAttribute.ZipPostalCode, zip));
+
+            // Contact
+            if (mobile?.Length > 0) directoryAttributes.Add(new DirectoryAttribute(LdapAttribute.MobilePhone, mobile));
+            if (email?.Length > 0) directoryAttributes.Add(new DirectoryAttribute(LdapAttribute.Mail, email));
+
+            // Manager
+            if (managerDn?.Length > 0) directoryAttributes.Add(new DirectoryAttribute(LdapAttribute.ManagerDn, managerDn));
+
+            string dnName = !userResult.Success || userResult.Data == null
+                ? $"CN={displayName},{_config.SearchBase}"
+                : userResult.Data.DistinguishedName;
+
+            // Perform Operation
+            var upsertResult = SaveLdap(dnName, LdapObjectType.User, directoryAttributes);
+
+            if (setPassword?.Length > 0 && upsertResult.Success)
             {
-                directoryAttributes.Add(new DirectoryAttribute("manager", managerDn));
+                var passwordResult = ResetPassword(dnName, setPassword);
+
+                return new LdapResult
+                {
+                    Success = passwordResult.Success && upsertResult.Success,
+                    Message = upsertResult.Message + ", " + passwordResult.Message,
+                };
             }
 
-            if (email?.Length > 0)
-            {
-                directoryAttributes.Add(new DirectoryAttribute(LdapAttribute.Mail, email));
-            }
-
-            // Update or Add?
-            if (!userResult.Success || userResult.Data == null)
-            {
-                string dn = $"CN={displayName},{_config.SearchBase}";
-                return SaveLdap(dn, LdapObjectType.User, directoryAttributes);
-            }
-            else
-            {
-                return SaveLdap(userResult.Data.DistinguishedName, LdapObjectType.User, directoryAttributes);
-            }
+            return upsertResult;
         }
 
         /// <inheritdoc />
@@ -118,14 +156,75 @@ namespace Netigent.Utils.Ldap
                 return new LdapResult { Message = userResult.Message };
             }
 
-            // Set attributes for the new user
-            IList<DirectoryAttribute> directoryAttributes = new List<DirectoryAttribute>()
+            if ((newPassword?.Length ?? 0) <= 8)
             {
-                new DirectoryAttribute(LdapAttribute.UserPassword, newPassword), // UserPassword is OpenLDAP and just string
-                new DirectoryAttribute(LdapAttribute.UnicodePassword, $"\"{newPassword}\""), // UnicodePwd is Microsoft and is a quoted string
-            };
+                return new LdapResult { Message = "Password is less than 8 characters" };
+            }
 
-            return SaveLdap(userResult.Data.DistinguishedName, LdapObjectType.User, directoryAttributes);
+            string ldapPath = $"{_fullLdapPath}/{_config.SearchBase}";
+            string serviceAccount = $"{_config.UserLoginDomain}\\{GetPlainUsername(_config.ServiceAccount)}";
+            string filter = string.Format(LdapFilter.FindUserByDn, userResult.Data.DistinguishedName);
+
+            const AuthenticationTypes authenticationTypes = AuthenticationTypes.Secure | AuthenticationTypes.Sealing | AuthenticationTypes.ServerBind;
+            DirectoryEntry searchRoot = null;
+            DirectorySearcher searcher = null;
+            DirectoryEntry userEntry = null;
+
+            try
+            {
+                searchRoot = new DirectoryEntry(ldapPath,
+                    serviceAccount, _config.ServiceKey, authenticationTypes);
+
+                searcher = new DirectorySearcher(searchRoot);
+                searcher.Filter = filter;
+                searcher.SearchScope = System.DirectoryServices.SearchScope.Subtree;
+                searcher.CacheResults = false;
+
+                SearchResult searchResult = searcher.FindOne();
+                if (searchResult == null)
+                {
+                    return new LdapResult
+                    {
+                        Message = $"Failed: Didn't find {userResult.Data.DistinguishedName} in {_config.SearchBase}"
+                    };
+                }
+
+                userEntry = searchResult.GetDirectoryEntry();
+
+                userEntry.Invoke("SetPassword", new object[] { newPassword });
+                userEntry.CommitChanges();
+
+                Console.WriteLine($"Password set '{newPassword}'");
+
+                return new LdapResult
+                {
+                    Success = true,
+                    Message = $"Password Reset"
+                };
+            }
+            catch (Exception ex)
+            {
+                if (ex.Message.Contains("800708C5"))
+                {
+                    return new LdapResult
+                    {
+                        Message = $"Password Requirements: {ex.Message}"
+                    };
+                }
+                else
+                {
+                    return new LdapResult
+                    {
+                        Message = $"Password Issue: {ex.Message}"
+                    };
+                }
+            }
+            finally
+            {
+                if (userEntry != null) userEntry.Dispose();
+                if (searcher != null) searcher.Dispose();
+                if (searchRoot != null) searchRoot.Dispose();
+            }
         }
 
         /// <inheritdoc />
@@ -294,14 +393,7 @@ namespace Netigent.Utils.Ldap
             // Lets spilt and attempt to find by SAM
             if (user == null)
             {
-                // Determine the username
-                string loginAsName = username.Contains("@") // If account has a @ e.g. john.bloggs@mycompany.com
-                        ? username.Split('@')[0] // Take 1st part as possible username
-                        : username.Contains("\\") // If user is presented as mycompany\john.bloggs
-                            ? username.Split('\\')[1] // Take last part
-                            : username; // Otherwise treat username as-is e.g. john.bloggs
-
-                user = GetUser(LdapQueryAttribute.SamAccountName, loginAsName);
+                user = GetUser(LdapQueryAttribute.SamAccountName, GetPlainUsername(username));
             }
 
             if (user != null)
@@ -319,6 +411,16 @@ namespace Netigent.Utils.Ldap
             {
                 Message = $"Couldnt find '{username}', checked UPN, Email, SAM"
             };
+        }
+
+        private string GetPlainUsername(string username)
+        {
+            // Determine the username
+            return username.Contains("@") // If account has a @ e.g. john.bloggs@mycompany.com
+                    ? username.Split('@')[0] // Take 1st part as possible username
+                    : username.Contains("\\") // If user is presented as mycompany\john.bloggs
+                        ? username.Split('\\')[1] // Take last part
+                        : username; // Otherwise treat username as-is e.g. john.bloggs
         }
 
         #endregion

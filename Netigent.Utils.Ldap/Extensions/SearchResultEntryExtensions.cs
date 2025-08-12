@@ -54,9 +54,9 @@ namespace Netigent.Utils.Ldap.Extensions
 #pragma warning restore CA1416 // Validate platform compatibility
             }
 
-            if (searchResult.Attributes.Contains(LdapAttribute.MemberOf))
+            if (searchResult.Attributes.Contains(LdapAttribute.MemberOfDn))
             {
-                var memberOfInfo = searchResult.Attributes[LdapAttribute.MemberOf].ParseValues<string>();
+                var memberOfInfo = searchResult.Attributes[LdapAttribute.MemberOfDn].ParseValues<string>();
                 output.MemberOf = memberOfInfo;
             }
 
@@ -152,8 +152,8 @@ namespace Netigent.Utils.Ldap.Extensions
             if (searchResult.Attributes.Contains(LdapAttribute.LogonCount))
                 output.LogonCount = searchResult.Attributes[LdapAttribute.LogonCount].ParseValue<int>();
 
-            if (searchResult.Attributes.Contains(LdapAttribute.ManagerCn))
-                output.ManagerCn = searchResult.Attributes[LdapAttribute.ManagerCn].ParseValue<string>();
+            if (searchResult.Attributes.Contains(LdapAttribute.ManagerDn))
+                output.ManagerCn = searchResult.Attributes[LdapAttribute.ManagerDn].ParseValue<string>();
 
             if (searchResult.Attributes.Contains(LdapAttribute.MobilePhone))
                 output.MobilePhone = searchResult.Attributes[LdapAttribute.MobilePhone].ParseValue<string>();
@@ -191,9 +191,9 @@ namespace Netigent.Utils.Ldap.Extensions
 #pragma warning restore CA1416 // Validate platform compatibility
             }
 
-            if (searchResult.Attributes.Contains(LdapAttribute.MemberOf))
+            if (searchResult.Attributes.Contains(LdapAttribute.MemberOfDn))
             {
-                var memberOfInfo = searchResult.Attributes[LdapAttribute.MemberOf].ParseValues<string>();
+                var memberOfInfo = searchResult.Attributes[LdapAttribute.MemberOfDn].ParseValues<string>();
                 output.MemberOf = memberOfInfo;
             }
 

@@ -20,12 +20,33 @@ namespace Netigent.Utils.Ldap
         LdapUser? GetUser(LdapQueryAttribute userQueryType, string userString);
         LdapResult EnableAndUnlockUser(string username);
         LdapResult DisableUser(string username);
-        LdapResult UpsertUser(string username, string password, string email, string displayName, string managerDn = "");
+        LdapResult UpsertUser(
+            string username,
+            string email,
+            string displayName,
+            string setPassword = "",
+            string company = "",
+            string department = "",
+            string office = "",
+            string jobTitle = "",
+            string managerDn = "",
+            string mobile = "",
+            string description = "",
+            string street = "",
+            string city = "",
+            string zip = ""
+            );
 
         //Groups
         IList<LdapGroup>? GetGroups();
+
         LdapGroup? GetGroup(string groupName, LdapQueryAttribute groupQueryType = LdapQueryAttribute.DisplayName);
-        bool MemberOf(string username, string groupName, LdapQueryAttribute groupQueryType = LdapQueryAttribute.DisplayName);
+
+        bool IsMemberOf(string username, string groupName, LdapQueryAttribute groupQueryType = LdapQueryAttribute.DisplayName);
+
+        LdapResult AddToGroup(string username, string groupDn);
+
+        LdapResult RemoveGroup(string username, string groupDn);
 
         //Generic
         IList<LdapGeneric> RunSearchQuery(string filter);

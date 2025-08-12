@@ -7,7 +7,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.DirectoryServices.Protocols;
-using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
@@ -21,6 +20,7 @@ namespace Netigent.Utils.Ldap
         private readonly LdapConnection _connection;
         private readonly NetworkCredential? _serviceAccount;
         private readonly bool _hasServiceAccount;
+        private readonly string _fullLdapPath;
 
         /// <summary>
         /// Construct LdapQueryService using parameters.
@@ -66,6 +66,9 @@ namespace Netigent.Utils.Ldap
             _config = config;
             _connection = BuildConnection();
 
+            // Old Format LDAP
+            _fullLdapPath = $"{(_config.UseSSL ? "LDAPS" : "LDAP")}://{_config.FullDNS}{(_config.Port != 389 ? $":{_config.Port}" : string.Empty)}";
+
             if (string.IsNullOrEmpty(_config.UserLoginDomain))
             {
                 throw new Exception($"{nameof(LdapQueryService)} - No 'UserLoginDomain' configured");
@@ -77,19 +80,10 @@ namespace Netigent.Utils.Ldap
             // Initialize Service Account
             if (config.ServiceAccount?.Length > 0 && config.ServiceKey?.Length > 0)
             {
-                if (!config.ServiceAccount.Contains("@") && !config.ServiceAccount.Contains("\\"))
-                {
-                    _serviceAccount = new NetworkCredential(
-                        userName: config.ServiceAccount,
-                        password: config.ServiceKey,
-                        domain: config.UserLoginDomain);
-                }
-                else
-                {
-                    _serviceAccount = new NetworkCredential(
-                        userName: config.ServiceAccount,
-                        password: config.ServiceKey);
-                }
+                _serviceAccount = new NetworkCredential(
+                    userName: GetPlainUsername(config.ServiceAccount),
+                    password: config.ServiceKey,
+                    domain: config.UserLoginDomain);
 
                 // Attempt to bindService Account
                 var bindResult = BindConnection(_serviceAccount);
@@ -194,22 +188,16 @@ namespace Netigent.Utils.Ldap
             connection.SessionOptions.SecureSocketLayer = _config.UseSSL;
             connection.SessionOptions.ProtocolVersion = 3;
             connection.SessionOptions.ReferralChasing = ReferralChasingOptions.All;
-            connection.SessionOptions.VerifyServerCertificate += (conn, cert) => true;
-            connection.AuthType = AuthType.Negotiate;
-
+            // connection.SessionOptions.VerifyServerCertificate += (conn, cert) => true;
+            connection.AuthType = AuthType.Negotiate | AuthType.Basic;
             return connection;
         }
 
         /// <summary>
-        /// Saves LDAP entry.
+        /// Saves LDAP entry with failover to DirectoryEntry COM API for password changes.
         /// </summary>
-        /// <param name="dn">cn=John Doe,ou=Users,dc=example,dc=com</param>
-        /// <param name="objectClass">user or group</param>
-        /// <param name="directoryAttributes"></param>
-        /// <returns></returns>
         private LdapResult SaveLdap(string dn, LdapObjectType objectType, IList<DirectoryAttribute> directoryAttributes)
         {
-            // Exisiting? 
             bool isExisting = objectType == LdapObjectType.Group
                 ? (GetGroup(dn, LdapQueryAttribute.Dn)?.DistinguishedName ?? string.Empty) == dn
                 : (GetUser(LdapQueryAttribute.Dn, dn)?.DistinguishedName ?? string.Empty) == dn;
@@ -218,27 +206,17 @@ namespace Netigent.Utils.Ldap
             {
                 if (!isExisting)
                 {
-                    AddRequest addRequest = new AddRequest(dn, objectType == LdapObjectType.Group ? LdapObject.Group : LdapObject.User);
+                    var addRequest = new AddRequest(dn, objectType == LdapObjectType.Group ? LdapObject.Group : LdapObject.User);
 
-                    // Set attributes for the new user
                     foreach (DirectoryAttribute attr in directoryAttributes)
                     {
-                        // Special case: password changes
-                        if (attr.Name.Equals(LdapAttribute.UnicodePassword, StringComparison.OrdinalIgnoreCase))
-                        {
-                            // AD expects password in UTF-16 with quotes
-                            string password = attr[0].ToString();
-                            byte[] pwdBytes = Encoding.Unicode.GetBytes($"\"{password}\"");
-                            addRequest.Attributes.Add(new DirectoryAttribute(LdapAttribute.UnicodePassword, pwdBytes));
-                        }
-                        else
+                        if (!attr.Name.Equals(LdapAttribute.UserPassword, StringComparison.InvariantCultureIgnoreCase) && !attr.Name.Equals(LdapAttribute.UnicodePassword, StringComparison.InvariantCultureIgnoreCase))
                         {
                             addRequest.Attributes.Add(attr);
                         }
                     }
 
-                    // Send the AddRequest to create the user
-                    DirectoryResponse addResponse = _connection.SendRequest(addRequest) as AddResponse;
+                    var addResponse = (AddResponse)_connection.SendRequest(addRequest);
 
                     return new LdapResult
                     {
@@ -248,66 +226,70 @@ namespace Netigent.Utils.Ldap
                 }
                 else
                 {
-                    IList<DirectoryAttributeModification> modifications = new List<DirectoryAttributeModification>();
+                    var modifications = new List<DirectoryAttributeModification>();
 
-
-
-                    // Set attributes for the new user
                     foreach (DirectoryAttribute attr in directoryAttributes)
                     {
                         var updateAttribute = new DirectoryAttributeModification
                         {
                             Name = attr.Name,
-                            Operation = DirectoryAttributeOperation.Replace,
+                            Operation = DirectoryAttributeOperation.Replace
                         };
 
-                        // Special case: password changes
                         if (attr.Name.Equals(LdapAttribute.UnicodePassword, StringComparison.OrdinalIgnoreCase))
                         {
-                            // AD expects password in UTF-16 with quotes
                             string password = attr[0].ToString();
                             byte[] pwdBytes = Encoding.Unicode.GetBytes($"\"{password}\"");
-
-                            // Append Value
                             updateAttribute.Add(pwdBytes);
-
-
-
                         }
                         else
                         {
                             foreach (var val in attr)
                             {
                                 if (val is byte[] bytes)
-                                {
                                     updateAttribute.Add(bytes);
-                                }
                                 else if (val != null)
-                                {
                                     updateAttribute.Add(val.ToString());
-                                }
                             }
                         }
-
                         modifications.Add(updateAttribute);
                     }
 
-                    // Send the AddRequest to create the user
-                    DirectoryResponse modResponse = _connection.SendRequest(new ModifyRequest(dn, modifications.ToArray()));
-
+                    var modResponse = _connection.SendRequest(new ModifyRequest(dn, modifications.ToArray()));
                     return new LdapResult
                     {
                         Success = modResponse.ResultCode == ResultCode.Success,
                         Message = modResponse.ErrorMessage,
                     };
+
                 }
+            }
+            catch (DirectoryOperationException dex)
+            {
+                Console.WriteLine("Protocols API Failed: " + dex.Message);
+
+                // Check if this is the WILL_NOT_PERFORM / insufficient permission case
+                if (dex.Response?.ErrorMessage?.Contains("WILL_NOT_PERFORM") == true ||
+                    dex.Response?.ErrorMessage?.Contains("INSUFF_ACCESS_RIGHTS") == true ||
+                    dex.Response?.ResultCode == ResultCode.UnwillingToPerform ||
+                    dex.Response?.ResultCode == ResultCode.InsufficientAccessRights)
+                {
+                    return new LdapResult
+                    {
+                        Success = false,
+                        Message = $"{dex.Response?.ErrorMessage ?? string.Empty} - Are you running an Azure Cloud Only AD etc, you'll need to run Azure Graph Services"
+                    };
+                }
+
+                // Rethrow if not the known failover case
+                throw;
             }
             catch (Exception ex)
             {
                 return new LdapResult
                 {
                     Success = false,
-                    Message = ex.Message,
+                    Message = ex.Message
                 };
             }
         }
@@ -334,7 +316,6 @@ namespace Netigent.Utils.Ldap
             Debug.WriteLine($"Result Count = {sr.Entries.Count}");
             return sr.Entries;
         }
-
         #endregion
     }
 }

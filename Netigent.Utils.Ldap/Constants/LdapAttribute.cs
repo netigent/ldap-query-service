@@ -2,12 +2,13 @@
 {
     public class LdapAttribute
     {
-        public const string MemberOf = "memberOf";
+        public const string MemberOfDn = "memberOf";
         public const string DisplayName = "displayName";
         public const string SAMAccountName = "sAMAccountName";
         public const string Mail = "mail";
         public const string Objectsid = "objectsid";
         public const string Department = "department";
+        public const string Description = "description";
         public const string ObjectCategory = "objectCategory";
         public const string ObjectGUID = "objectGUID";
         public const string UserPrincipalName = "userPrincipalName";
@@ -24,7 +25,7 @@
         public const string LogonCount = "logonCount";
         public const string UnicodePassword = "unicodePwd";
         public const string UserPassword = "userPassword";
-        public const string ManagerCn = "manager";
+        public const string ManagerDn = "manager";
         public const string Company = "company";
         public const string EmployeeID = "employeeID";
         public const string JobTitle = "title";
