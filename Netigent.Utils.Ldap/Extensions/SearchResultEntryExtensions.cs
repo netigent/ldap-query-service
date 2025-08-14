@@ -1,297 +1,305 @@
-﻿using Netigent.Utils.Ldap.Models;
+﻿using Netigent.Utils.Ldap.Constants;
+using Netigent.Utils.Ldap.Models;
 using System;
 using System.DirectoryServices.Protocols;
 using System.Security.Principal;
 
 namespace Netigent.Utils.Ldap.Extensions
 {
-	public static class SearchResultEntryExtensions
-	{
-		public static LdapGeneric ToGenericResult(this SearchResultEntry searchResult)
-		{
-			if (searchResult == null || searchResult.Attributes.Count == 0)
-				return default;
+    public static class SearchResultEntryExtensions
+    {
+        public static LdapGeneric ToGenericResult(this SearchResultEntry searchResult)
+        {
+            if (searchResult == null || searchResult.Attributes.Count == 0)
+                return default;
 
-			LdapGeneric output = new();
+            LdapGeneric output = new();
 
-			if (searchResult.Attributes.Contains(Constants.displayName))
-				output.DisplayName = searchResult.Attributes[Constants.displayName].ParseValue<string>();
+            if (searchResult.Attributes.Contains(LdapAttribute.DisplayName))
+                output.DisplayName = searchResult.Attributes[LdapAttribute.DisplayName].ParseValue<string>();
 
-			if (searchResult.Attributes.Contains(Constants.mail))
-				output.Mail = searchResult.Attributes[Constants.mail].ParseValue<string>();
+            if (searchResult.Attributes.Contains(LdapAttribute.Mail))
+                output.Mail = searchResult.Attributes[LdapAttribute.Mail].ParseValue<string>();
 
-			if (searchResult.Attributes.Contains(Constants.department))
-				output.Department = searchResult.Attributes[Constants.department].ParseValue<string>();
+            if (searchResult.Attributes.Contains(LdapAttribute.Department))
+                output.Department = searchResult.Attributes[LdapAttribute.Department].ParseValue<string>();
 
-			if (searchResult.Attributes.Contains(Constants.objectCategory))
-				output.ObjectCategory = searchResult.Attributes[Constants.objectCategory].ParseValue<string>();
+            if (searchResult.Attributes.Contains(LdapAttribute.ObjectCategory))
+                output.ObjectCategory = searchResult.Attributes[LdapAttribute.ObjectCategory].ParseValue<string>();
 
-			if (searchResult.Attributes.Contains(Constants.userPrincipalName))
-				output.UserPrincipalName = searchResult.Attributes[Constants.userPrincipalName].ParseValue<string>();
+            if (searchResult.Attributes.Contains(LdapAttribute.UserPrincipalName))
+                output.UserPrincipalName = searchResult.Attributes[LdapAttribute.UserPrincipalName].ParseValue<string>();
 
-			if (searchResult.Attributes.Contains(Constants.preferredLanguage))
-				output.PreferredLanguage = searchResult.Attributes[Constants.preferredLanguage].ParseValue<string>();
+            if (searchResult.Attributes.Contains(LdapAttribute.PreferredLanguage))
+                output.PreferredLanguage = searchResult.Attributes[LdapAttribute.PreferredLanguage].ParseValue<string>();
 
-			if (searchResult.Attributes.Contains(Constants.objectGUID))
-				output.ObjectGUID = searchResult.Attributes[Constants.objectGUID].ParseValue<Guid>();
+            if (searchResult.Attributes.Contains(LdapAttribute.ObjectGUID))
+                output.ObjectGUID = searchResult.Attributes[LdapAttribute.ObjectGUID].ParseValue<Guid>();
 
-			if (searchResult.Attributes.Contains(Constants.AzureObjectId))
-				output.AzureObjectId = searchResult.Attributes[Constants.AzureObjectId].ParseValue<Guid>();
+            if (searchResult.Attributes.Contains(LdapAttribute.AzureObjectId))
+                output.AzureObjectId = searchResult.Attributes[LdapAttribute.AzureObjectId].ParseValue<Guid>();
 
-			if (searchResult.Attributes.Contains(Constants.objectsid))
-			{
+            if (searchResult.Attributes.Contains(LdapAttribute.Objectsid))
+            {
 #pragma warning disable CA1416 // Validate platform compatibility
-				try
-				{
-					var acc = searchResult.Attributes[Constants.objectsid].ParseValue<SecurityIdentifier>();
-					output.ObjectSid = acc.AccountDomainSid.ToString().ToLower();
-				}
-				catch
-				{
-					output.ObjectSid = null;
-				}
-#pragma warning restore CA1416 // Validate platform compatibility
-			}
-
-			if (searchResult.Attributes.Contains(Constants.memberOf))
-			{
-				var memberOfInfo = searchResult.Attributes[Constants.memberOf].ParseValues<string>();
-				output.MemberOf = memberOfInfo;
-			}
-
-			if (searchResult.Attributes.Contains(Constants.sAMAccountName))
-				output.SamAccountName = searchResult.Attributes[Constants.sAMAccountName].ParseValue<string>();
-
-			if (searchResult.Attributes.Contains(Constants.distinguishedName))
-				output.DistinguishedName = searchResult.Attributes[Constants.distinguishedName].ParseValue<string>();
-
-			if (searchResult.Attributes.Contains(Constants.whenCreated))
-				output.Created = searchResult.Attributes[Constants.whenCreated].ParseValue<DateTime>();
-
-			if (searchResult.Attributes.Contains(Constants.whenChanged))
-				output.Modified = searchResult.Attributes[Constants.whenChanged].ParseValue<DateTime>();
-
-
-			if (searchResult.Attributes.Contains(Constants.member))
-			{
-				var members = searchResult.Attributes[Constants.member].ParseValues<string>();
-				output.Members = members;
-			}
-			return output;
-		}
-
-		public static LdapUser ToUserResult(this SearchResultEntry searchResult)
-		{
-			if (searchResult == null || searchResult.Attributes.Count == 0)
-				return default;
-
-			LdapUser output = new();
-
-			if (searchResult.Attributes.Contains(Constants.displayName))
-				output.DisplayName = searchResult.Attributes[Constants.displayName].ParseValue<string>();
-
-			if (searchResult.Attributes.Contains(Constants.mail))
-				output.Mail = searchResult.Attributes[Constants.mail].ParseValue<string>();
-
-			if (searchResult.Attributes.Contains(Constants.department))
-				output.Department = searchResult.Attributes[Constants.department].ParseValue<string>();
-
-			if (searchResult.Attributes.Contains(Constants.objectCategory))
-				output.ObjectCategory = searchResult.Attributes[Constants.objectCategory].ParseValue<string>();
-
-			if (searchResult.Attributes.Contains(Constants.userPrincipalName))
-				output.UserPrincipalName = searchResult.Attributes[Constants.userPrincipalName].ParseValue<string>();
-
-			if (searchResult.Attributes.Contains(Constants.preferredLanguage))
-				output.PreferredLanguage = searchResult.Attributes[Constants.preferredLanguage].ParseValue<string>();
-
-			if (searchResult.Attributes.Contains(Constants.objectGUID))
-				output.ObjectGUID = searchResult.Attributes[Constants.objectGUID].ParseValue<Guid>();
-
-			if (searchResult.Attributes.Contains(Constants.AzureObjectId))
-				output.AzureObjectId = searchResult.Attributes[Constants.AzureObjectId].ParseValue<Guid>();
-
-			if (searchResult.Attributes.Contains(Constants.City))
-				output.City = searchResult.Attributes[Constants.City].ParseValue<string>();
-			if (searchResult.Attributes.Contains(Constants.Company))
-				output.Company = searchResult.Attributes[Constants.Company].ParseValue<string>();
-
-			if (searchResult.Attributes.Contains(Constants.Country))
-				output.Country = searchResult.Attributes[Constants.Country].ParseValue<string>();
-
-			if (searchResult.Attributes.Contains(Constants.EmployeeID))
-				output.EmployeeID = searchResult.Attributes[Constants.EmployeeID].ParseValue<string>();
-
-			if (searchResult.Attributes.Contains(Constants.JobTitle))
-				output.JobTitle = searchResult.Attributes[Constants.JobTitle].ParseValue<string>();
-
-			//Last Login
-			if (searchResult.Attributes.Contains(Constants.LastLogon) || searchResult.Attributes.Contains(Constants.LastLogonTimestamp))
-			{
-				DateTime latestTimestamp;
-				DateTime lastLogin = searchResult.Attributes.Contains(Constants.LastLogon) ? searchResult.Attributes[Constants.LastLogon].ParseValue<DateTime>() : default;
-				DateTime lastLoginTimeStamp = searchResult.Attributes.Contains(Constants.LastLogonTimestamp) ? searchResult.Attributes[Constants.LastLogonTimestamp].ParseValue<DateTime>() : default;
-
-				if(lastLoginTimeStamp != default && lastLogin != default)
+                try
                 {
-					if (lastLoginTimeStamp > lastLogin)
-						latestTimestamp = lastLoginTimeStamp;
-					else
-						latestTimestamp = lastLogin;
-				}
-				else 
-					latestTimestamp = lastLoginTimeStamp != default ? lastLoginTimeStamp : lastLogin;
-
-				output.LastLogon = latestTimestamp != default ? lastLoginTimeStamp : null;
-			}
-
-			if (searchResult.Attributes.Contains(Constants.LockoutTime))
-				output.LockoutTime = searchResult.Attributes[Constants.LockoutTime].ParseValue<int>();
-
-			if (searchResult.Attributes.Contains(Constants.LogonCount))
-				output.LogonCount = searchResult.Attributes[Constants.LogonCount].ParseValue<int>();
-
-			if (searchResult.Attributes.Contains(Constants.ManagerCn))
-				output.ManagerCn = searchResult.Attributes[Constants.ManagerCn].ParseValue<string>();
-
-			if (searchResult.Attributes.Contains(Constants.MobilePhone))
-				output.MobilePhone = searchResult.Attributes[Constants.MobilePhone].ParseValue<string>();
-
-			if (searchResult.Attributes.Contains(Constants.OfficeName))
-				output.OfficeName = searchResult.Attributes[Constants.OfficeName].ParseValue<string>();
-
-			if (searchResult.Attributes.Contains(Constants.Street))
-				output.Street = searchResult.Attributes[Constants.Street].ParseValue<string>();
-
-			if (searchResult.Attributes.Contains(Constants.OfficePhone))
-				output.OfficePhone = searchResult.Attributes[Constants.OfficePhone].ParseValue<string>();
-
-			if (searchResult.Attributes.Contains(Constants.State))
-				output.State = searchResult.Attributes[Constants.State].ParseValue<string>();
-
-			if (searchResult.Attributes.Contains(Constants.ZipPostalCode))
-				output.ZipPostalCode = searchResult.Attributes[Constants.ZipPostalCode].ParseValue<string>();
-
-			if (searchResult.Attributes.Contains(Constants.PwdLastSet))
-				output.PwdLastSet = searchResult.Attributes[Constants.PwdLastSet].ParseValue<string>();
-
-			if (searchResult.Attributes.Contains(Constants.objectsid))
-			{
-#pragma warning disable CA1416 // Validate platform compatibility
-				try
-				{
-					var acc = searchResult.Attributes[Constants.objectsid].ParseValue<SecurityIdentifier>();
-					output.ObjectSid = acc.AccountDomainSid.ToString().ToLower();
-				}
-				catch
-				{
-					output.ObjectSid = null;
-				}
+                    var acc = searchResult.Attributes[LdapAttribute.Objectsid].ParseValue<SecurityIdentifier>();
+                    output.ObjectSid = acc.AccountDomainSid.ToString().ToLower();
+                }
+                catch
+                {
+                    output.ObjectSid = null;
+                }
 #pragma warning restore CA1416 // Validate platform compatibility
-			}
+            }
 
-			if (searchResult.Attributes.Contains(Constants.memberOf))
-			{
-				var memberOfInfo = searchResult.Attributes[Constants.memberOf].ParseValues<string>();
-				output.MemberOf = memberOfInfo;
-			}
+            if (searchResult.Attributes.Contains(LdapAttribute.MemberOfDn))
+            {
+                var memberOfInfo = searchResult.Attributes[LdapAttribute.MemberOfDn].ParseValues<string>();
+                output.MemberOf = memberOfInfo;
+            }
 
-			if (searchResult.Attributes.Contains(Constants.distinguishedName))
-				output.DistinguishedName = searchResult.Attributes[Constants.distinguishedName].ParseValue<string>();
+            if (searchResult.Attributes.Contains(LdapAttribute.SAMAccountName))
+                output.SamAccountName = searchResult.Attributes[LdapAttribute.SAMAccountName].ParseValue<string>();
 
-			if (searchResult.Attributes.Contains(Constants.sAMAccountName))
-				output.SamAccountName = searchResult.Attributes[Constants.sAMAccountName].ParseValue<string>();
+            if (searchResult.Attributes.Contains(LdapAttribute.DistinguishedName))
+                output.DistinguishedName = searchResult.Attributes[LdapAttribute.DistinguishedName].ParseValue<string>();
 
-			if (searchResult.Attributes.Contains(Constants.whenCreated))
-				output.Created = searchResult.Attributes[Constants.whenCreated].ParseValue<DateTime>();
+            if (searchResult.Attributes.Contains(LdapAttribute.WhenCreated))
+                output.Created = searchResult.Attributes[LdapAttribute.WhenCreated].ParseValue<DateTime>();
 
-			if (searchResult.Attributes.Contains(Constants.whenChanged))
-				output.Modified = searchResult.Attributes[Constants.whenChanged].ParseValue<DateTime>();
+            if (searchResult.Attributes.Contains(LdapAttribute.WhenChanged))
+                output.Modified = searchResult.Attributes[LdapAttribute.WhenChanged].ParseValue<DateTime>();
 
-			try
-			{
-				if (searchResult.Attributes.Contains(Constants.sn))
-					output.Surname = searchResult.Attributes[Constants.sn].ParseValue<string>();
-				else
-				{
-					var lastBreak = output.DisplayName.LastIndexOf(" ");
-					var surname = output.DisplayName.Substring(lastBreak + 1, output.DisplayName.Length - (lastBreak + 1));
-					output.Surname = surname;
-				}
-			}
-			catch { }
 
-			try
-			{
-				if (searchResult.Attributes.Contains(Constants.givenName))
-					output.Firstname = searchResult.Attributes[Constants.givenName].ParseValue<string>();
-				else
-				{
-					var lastBreak = output.DisplayName.LastIndexOf(" ");
-					var firstname = output.DisplayName.Substring(0, lastBreak);
-					output.Firstname = firstname;
-				}
-			}
-			catch { }
+            if (searchResult.Attributes.Contains(LdapAttribute.Member))
+            {
+                var members = searchResult.Attributes[LdapAttribute.Member].ParseValues<string>();
+                output.Members = members;
+            }
+            return output;
+        }
 
-			if (searchResult.Attributes.Contains(Constants.sAMAccountName))
-				output.SamAccountName = searchResult.Attributes[Constants.sAMAccountName].ParseValue<string>();
+        public static LdapUser TofoundUserResult(this SearchResultEntry searchResult)
+        {
+            if (searchResult == null || searchResult.Attributes.Count == 0)
+                return default;
 
-			return output;
-		}
+            LdapUser output = new();
 
-		public static LdapGroup ToGroupResult(this SearchResultEntry searchResult)
-		{
-			if (searchResult == null || searchResult.Attributes.Count == 0)
-				return default;
+            if (searchResult.Attributes.Contains(LdapAttribute.DisplayName))
+                output.DisplayName = searchResult.Attributes[LdapAttribute.DisplayName].ParseValue<string>();
 
-			LdapGroup output = new();
+            if (searchResult.Attributes.Contains(LdapAttribute.Mail))
+                output.Mail = searchResult.Attributes[LdapAttribute.Mail].ParseValue<string>();
 
-			if (searchResult.Attributes.Contains(Constants.displayName))
-				output.DisplayName = searchResult.Attributes[Constants.displayName].ParseValue<string>();
+            if (searchResult.Attributes.Contains(LdapAttribute.Department))
+                output.Department = searchResult.Attributes[LdapAttribute.Department].ParseValue<string>();
 
-			if (searchResult.Attributes.Contains(Constants.objectCategory))
-				output.ObjectCategory = searchResult.Attributes[Constants.objectCategory].ParseValue<string>();
+            if (searchResult.Attributes.Contains(LdapAttribute.ObjectCategory))
+                output.ObjectCategory = searchResult.Attributes[LdapAttribute.ObjectCategory].ParseValue<string>();
 
-			if (searchResult.Attributes.Contains(Constants.objectGUID))
-				output.ObjectGUID = searchResult.Attributes[Constants.objectGUID].ParseValue<Guid>();
+            if (searchResult.Attributes.Contains(LdapAttribute.UserPrincipalName))
+                output.UserPrincipalName = searchResult.Attributes[LdapAttribute.UserPrincipalName].ParseValue<string>();
 
-			if (searchResult.Attributes.Contains(Constants.objectsid))
-			{
+            if (searchResult.Attributes.Contains(LdapAttribute.PreferredLanguage))
+                output.PreferredLanguage = searchResult.Attributes[LdapAttribute.PreferredLanguage].ParseValue<string>();
+
+            if (searchResult.Attributes.Contains(LdapAttribute.ObjectGUID))
+                output.ObjectGUID = searchResult.Attributes[LdapAttribute.ObjectGUID].ParseValue<Guid>();
+
+            if (searchResult.Attributes.Contains(LdapAttribute.AzureObjectId))
+                output.AzureId = searchResult.Attributes[LdapAttribute.AzureObjectId].ParseValue<Guid>();
+
+            if (searchResult.Attributes.Contains(LdapAttribute.City))
+                output.City = searchResult.Attributes[LdapAttribute.City].ParseValue<string>();
+            if (searchResult.Attributes.Contains(LdapAttribute.Company))
+                output.Company = searchResult.Attributes[LdapAttribute.Company].ParseValue<string>();
+
+            if (searchResult.Attributes.Contains(LdapAttribute.Country))
+                output.Country = searchResult.Attributes[LdapAttribute.Country].ParseValue<string>();
+
+            if (searchResult.Attributes.Contains(LdapAttribute.EmployeeID))
+                output.EmployeeID = searchResult.Attributes[LdapAttribute.EmployeeID].ParseValue<string>();
+
+            if (searchResult.Attributes.Contains(LdapAttribute.JobTitle))
+                output.JobTitle = searchResult.Attributes[LdapAttribute.JobTitle].ParseValue<string>();
+
+            //Last Login
+            if (searchResult.Attributes.Contains(LdapAttribute.LastLogon) || searchResult.Attributes.Contains(LdapAttribute.LastLogonTimestamp))
+            {
+                DateTime latestTimestamp;
+                DateTime lastLogin = searchResult.Attributes.Contains(LdapAttribute.LastLogon) ? searchResult.Attributes[LdapAttribute.LastLogon].ParseValue<DateTime>() : default;
+                DateTime lastLoginTimeStamp = searchResult.Attributes.Contains(LdapAttribute.LastLogonTimestamp) ? searchResult.Attributes[LdapAttribute.LastLogonTimestamp].ParseValue<DateTime>() : default;
+
+                if (lastLoginTimeStamp != default && lastLogin != default)
+                {
+                    if (lastLoginTimeStamp > lastLogin)
+                        latestTimestamp = lastLoginTimeStamp;
+                    else
+                        latestTimestamp = lastLogin;
+                }
+                else
+                    latestTimestamp = lastLoginTimeStamp != default ? lastLoginTimeStamp : lastLogin;
+
+                output.LastLogon = latestTimestamp != default ? lastLoginTimeStamp : null;
+            }
+
+            if (searchResult.Attributes.Contains(LdapAttribute.LockoutTime))
+                output.LockoutTime = searchResult.Attributes[LdapAttribute.LockoutTime].ParseValue<long>();
+
+            if (searchResult.Attributes.Contains(LdapAttribute.LogonCount))
+                output.LogonCount = searchResult.Attributes[LdapAttribute.LogonCount].ParseValue<int>();
+
+            if (searchResult.Attributes.Contains(LdapAttribute.ManagerDn))
+                output.ManagerCn = searchResult.Attributes[LdapAttribute.ManagerDn].ParseValue<string>();
+
+            if (searchResult.Attributes.Contains(LdapAttribute.MobilePhone))
+                output.MobilePhone = searchResult.Attributes[LdapAttribute.MobilePhone].ParseValue<string>();
+
+            if (searchResult.Attributes.Contains(LdapAttribute.OfficeName))
+                output.OfficeName = searchResult.Attributes[LdapAttribute.OfficeName].ParseValue<string>();
+
+            if (searchResult.Attributes.Contains(LdapAttribute.Street))
+                output.Street = searchResult.Attributes[LdapAttribute.Street].ParseValue<string>();
+
+            if (searchResult.Attributes.Contains(LdapAttribute.OfficePhone))
+                output.OfficePhone = searchResult.Attributes[LdapAttribute.OfficePhone].ParseValue<string>();
+
+            if (searchResult.Attributes.Contains(LdapAttribute.State))
+                output.State = searchResult.Attributes[LdapAttribute.State].ParseValue<string>();
+
+            if (searchResult.Attributes.Contains(LdapAttribute.ZipPostalCode))
+                output.ZipPostalCode = searchResult.Attributes[LdapAttribute.ZipPostalCode].ParseValue<string>();
+
+            if (searchResult.Attributes.Contains(LdapAttribute.PwdLastSet))
+                output.PwdLastSet = searchResult.Attributes[LdapAttribute.PwdLastSet].ParseValue<string>();
+
+            if (searchResult.Attributes.Contains(LdapAttribute.Objectsid))
+            {
 #pragma warning disable CA1416 // Validate platform compatibility
-				try
-				{
-					var acc = searchResult.Attributes[Constants.objectsid].ParseValue<SecurityIdentifier>();
-					output.ObjectSid = acc.AccountDomainSid.ToString().ToLower();
-				}
-				catch
-				{
-					output.ObjectSid = null;
-				}
+                try
+                {
+                    var acc = searchResult.Attributes[LdapAttribute.Objectsid].ParseValue<SecurityIdentifier>();
+                    output.ObjectSid = acc.AccountDomainSid.ToString().ToLower();
+                }
+                catch
+                {
+                    output.ObjectSid = null;
+                }
 #pragma warning restore CA1416 // Validate platform compatibility
-			}
+            }
 
-			if (searchResult.Attributes.Contains(Constants.member))
-			{
-				var members = searchResult.Attributes[Constants.member].ParseValues<string>();
-				output.Members = members;
-			}
+            if (searchResult.Attributes.Contains(LdapAttribute.MemberOfDn))
+            {
+                var memberOfInfo = searchResult.Attributes[LdapAttribute.MemberOfDn].ParseValues<string>();
+                output.MemberOf = memberOfInfo;
+            }
+
+            if (searchResult.Attributes.Contains(LdapAttribute.DistinguishedName))
+                output.DistinguishedName = searchResult.Attributes[LdapAttribute.DistinguishedName].ParseValue<string>();
+
+            if (searchResult.Attributes.Contains(LdapAttribute.SAMAccountName))
+                output.SamAccountName = searchResult.Attributes[LdapAttribute.SAMAccountName].ParseValue<string>();
+
+            if (searchResult.Attributes.Contains(LdapAttribute.WhenCreated))
+                output.Created = searchResult.Attributes[LdapAttribute.WhenCreated].ParseValue<DateTime>();
+
+            if (searchResult.Attributes.Contains(LdapAttribute.WhenChanged))
+                output.Modified = searchResult.Attributes[LdapAttribute.WhenChanged].ParseValue<DateTime>();
+
+            try
+            {
+                if (searchResult.Attributes.Contains(LdapAttribute.Surname))
+                    output.Surname = searchResult.Attributes[LdapAttribute.Surname].ParseValue<string>();
+                else
+                {
+                    var lastBreak = output.DisplayName.LastIndexOf(" ");
+                    var surname = output.DisplayName.Substring(lastBreak + 1, output.DisplayName.Length - (lastBreak + 1));
+                    output.Surname = surname;
+                }
+            }
+            catch { }
+
+            try
+            {
+                if (searchResult.Attributes.Contains(LdapAttribute.FirstName))
+                    output.Firstname = searchResult.Attributes[LdapAttribute.FirstName].ParseValue<string>();
+                else
+                {
+                    var lastBreak = output.DisplayName.LastIndexOf(" ");
+                    var firstname = output.DisplayName.Substring(0, lastBreak);
+                    output.Firstname = firstname;
+                }
+            }
+            catch { }
+
+            if (searchResult.Attributes.Contains(LdapAttribute.SAMAccountName))
+                output.SamAccountName = searchResult.Attributes[LdapAttribute.SAMAccountName].ParseValue<string>();
+
+            if (searchResult.Attributes.Contains(LdapAttribute.UserAccountControl))
+            {
+                output.UserAccountControl = searchResult.Attributes[LdapAttribute.UserAccountControl].ParseValue<int>();
+            }
+
+            return output;
+        }
+
+        public static LdapGroup ToGroupResult(this SearchResultEntry searchResult)
+        {
+            if (searchResult == null || searchResult.Attributes.Count == 0)
+                return default;
+
+            LdapGroup output = new();
+
+            if (searchResult.Attributes.Contains(LdapAttribute.DisplayName))
+                output.DisplayName = searchResult.Attributes[LdapAttribute.DisplayName].ParseValue<string>();
+
+            if (searchResult.Attributes.Contains(LdapAttribute.ObjectCategory))
+                output.ObjectCategory = searchResult.Attributes[LdapAttribute.ObjectCategory].ParseValue<string>();
+
+            if (searchResult.Attributes.Contains(LdapAttribute.ObjectGUID))
+                output.ObjectGUID = searchResult.Attributes[LdapAttribute.ObjectGUID].ParseValue<Guid>();
+
+            if (searchResult.Attributes.Contains(LdapAttribute.Objectsid))
+            {
+#pragma warning disable CA1416 // Validate platform compatibility
+                try
+                {
+                    var acc = searchResult.Attributes[LdapAttribute.Objectsid].ParseValue<SecurityIdentifier>();
+                    output.ObjectSid = acc.AccountDomainSid.ToString().ToLower();
+                }
+                catch
+                {
+                    output.ObjectSid = null;
+                }
+#pragma warning restore CA1416 // Validate platform compatibility
+            }
+
+            if (searchResult.Attributes.Contains(LdapAttribute.Member))
+            {
+                var members = searchResult.Attributes[LdapAttribute.Member].ParseValues<string>();
+                output.Members = members;
+            }
 
 
-			if (searchResult.Attributes.Contains(Constants.sAMAccountName))
-				output.SamAccountName = searchResult.Attributes[Constants.sAMAccountName].ParseValue<string>();
+            if (searchResult.Attributes.Contains(LdapAttribute.SAMAccountName))
+                output.SamAccountName = searchResult.Attributes[LdapAttribute.SAMAccountName].ParseValue<string>();
 
-			if (searchResult.Attributes.Contains(Constants.distinguishedName))
-				output.DistinguishedName = searchResult.Attributes[Constants.distinguishedName].ParseValue<string>();
+            if (searchResult.Attributes.Contains(LdapAttribute.DistinguishedName))
+                output.DistinguishedName = searchResult.Attributes[LdapAttribute.DistinguishedName].ParseValue<string>();
 
-			if (searchResult.Attributes.Contains(Constants.whenCreated))
-				output.Created = searchResult.Attributes[Constants.whenCreated].ParseValue<DateTime>();
+            if (searchResult.Attributes.Contains(LdapAttribute.WhenCreated))
+                output.Created = searchResult.Attributes[LdapAttribute.WhenCreated].ParseValue<DateTime>();
 
-			if (searchResult.Attributes.Contains(Constants.whenChanged))
-				output.Modified = searchResult.Attributes[Constants.whenChanged].ParseValue<DateTime>();
+            if (searchResult.Attributes.Contains(LdapAttribute.WhenChanged))
+                output.Modified = searchResult.Attributes[LdapAttribute.WhenChanged].ParseValue<DateTime>();
 
+            if (searchResult.Attributes.Contains(LdapAttribute.AzureObjectId))
+                output.AzureId = searchResult.Attributes[LdapAttribute.AzureObjectId].ParseValue<Guid>();
 
-			return output;
-		}
-	}
+            return output;
+        }
+    }
 }

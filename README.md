@@ -7,6 +7,9 @@ Initially thanks for considering using this library - we hope that it gives you 
 In terms of using the Library the following should get you up and running quickly
 
 # Version Changes
+**1.1.0** LDAP Write functionality and upgraded to .net8 LTS
+***AzureAD / EntraID Cloud-Only***: This configuration doesnt support LDAP write as EntraID does a 1-way sync to EntraID Domain Services.
+
 **1.0.16** Added LDAP Functionality
 ***ResetUserLDAPPassword***: The ability in Windows Directory to Reset Password, must use serviceAccount (adminAccount), and serviceKey (adminPassword)
 ***Login***: Updated to allow login via Email attribute, requires serviceAccount (adminAccount), and serviceKey (adminPassword) as email may differ from UPN
