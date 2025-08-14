@@ -1,6 +1,7 @@
-﻿using Netigent.Utils.Ldap.Enum;
-using Netigent.Utils.Ldap.Models;
+﻿using Netigent.Utils.Ldap.Models;
+using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Netigent.Utils.Ldap
 {
@@ -15,13 +16,59 @@ namespace Netigent.Utils.Ldap
         /// <returns></returns>
         LdapResult<LdapUser> UserLogin(string username, string password, string domain = "");
 
-        //Users
+        /// <summary>
+        /// Gets All USers.
+        /// </summary>
+        /// <returns></returns>
         IList<LdapUser>? GetUsers();
-        LdapUser? GetUser(LdapQueryAttribute userQueryType, string userString);
-        LdapResult EnableAndUnlockUser(string username);
-        LdapResult DisableUser(string username);
-        LdapResult UpsertUser(
-            string username,
+
+        /// <summary>
+        /// Get User by either user.name, user.principal@mydomain.com, users.email@domain.com, (uses ServiceAccount).
+        /// </summary>
+        /// <param name="username">user.name, user.principal@mydomain.com, users.email@domain.com</param>
+        /// <returns></returns>
+        LdapResult<LdapUser> GetUser(string username);
+
+        /// <summary>
+        /// Get User by either AzureId (msDS-aadObjectId) or objectGUID.
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <returns></returns>
+        LdapResult<LdapUser> GetUser(Guid userId);
+
+        /// <summary>
+        /// Enable User, will attempt to Unlock is simple LDAP (uses ServiceAccount).
+        /// </summary>
+        /// <param name="username"></param>
+        /// <returns></returns>
+        Task<LdapResult> EnableUserAsync(string username);
+
+        /// <summary>
+        /// Disable User (uses ServiceAccount).
+        /// </summary>
+        /// <param name="username"></param>
+        /// <returns></returns>
+        Task<LdapResult> DisableUserAsync(string username);
+
+        /// <summary>
+        /// Upsert User (uses ServiceAccount).
+        /// </summary>
+        /// <param name="upn">UserPrincipalName e.g. john.bloggs@netigent.co.uk</param>
+        /// <param name="email">User Email (might be same as upn) e.g. john.bloggs@netigent.co.uk or johnb1@netigent.co.uk</param>
+        /// <param name="displayName">John Bloggs</param>
+        /// <param name="setPassword">Required for New Accounts, must met complexity requirements, usually 8+ chars and Cap, Small, Number and Special char.</param>
+        /// <param name="company"></param>
+        /// <param name="department"></param>
+        /// <param name="office"></param>
+        /// <param name="jobTitle"></param>
+        /// <param name="managerDn"></param>
+        /// <param name="mobile"></param>
+        /// <param name="street"></param>
+        /// <param name="city"></param>
+        /// <param name="zip"></param>
+        /// <returns></returns>
+        Task<LdapResult> UpsertUserAsync(
+            string upn,
             string email,
             string displayName,
             string setPassword = "",
@@ -31,28 +78,61 @@ namespace Netigent.Utils.Ldap
             string jobTitle = "",
             string managerDn = "",
             string mobile = "",
-            string description = "",
             string street = "",
             string city = "",
             string zip = ""
             );
 
-        //Groups
+        /// <summary>
+        /// Get Groups (uses ServiceAccount).
+        /// </summary>
+        /// <returns></returns>
         IList<LdapGroup>? GetGroups();
 
-        LdapGroup? GetGroup(string groupName, LdapQueryAttribute groupQueryType = LdapQueryAttribute.DisplayName);
+        /// <summary>
+        /// Supply either GroupId (Object ID), DisplayName or Dn e.g CN=MY Development,OU=AADDC Users,DC=NETIGENT,DC=co (uses ServiceAccount).
+        /// </summary>
+        /// <param name="group"></param>
+        /// <returns></returns>
+        LdapResult<LdapGroup> GetGroup(string group);
 
-        bool IsMemberOf(string username, string groupName, LdapQueryAttribute groupQueryType = LdapQueryAttribute.DisplayName);
+        /// <summary>
+        /// Get Group by either AzureId (msDS-aadObjectId) or objectGUID  (uses ServiceAccount).
+        /// </summary>
+        /// <param name="groupId"></param>
+        /// <returns></returns>
+        LdapResult<LdapGroup> GetGroup(Guid groupId);
 
-        LdapResult AddToGroup(string username, string groupDn);
+        /// <summary>
+        /// Checks if User is Group Member  (uses ServiceAccount).
+        /// </summary>
+        /// <param name="username"></param>
+        /// <param name="group"></param>
+        /// <returns></returns>
+        bool IsMemberOf(string username, string group);
 
-        LdapResult RemoveGroup(string username, string groupDn);
+        /// <summary>
+        /// Add User to Group  (uses ServiceAccount).
+        /// </summary>
+        /// <param name="username"></param>
+        /// <param name="group"></param>
+        /// <returns></returns>
+        Task<LdapResult> AddToGroupAsync(string username, string group);
 
-        //Generic
-        IList<LdapGeneric> RunSearchQuery(string filter);
+        /// <summary>
+        /// Remove User to Group  (uses ServiceAccount).
+        /// </summary>
+        /// <param name="username"></param>
+        /// <param name="groupname"></param>
+        /// <returns></returns>
+        Task<LdapResult> RemoveGroupAsync(string username, string group);
 
-        LdapResult ResetPassword(string username, string newPassword);
-
-
+        /// <summary>
+        /// Reset Password (uses ServiceAccount).
+        /// </summary>
+        /// <param name="upn"></param>
+        /// <param name="newPassword"></param>
+        /// <returns></returns>
+        Task<LdapResult> ResetPasswordAsync(string username, string newPassword);
     }
 }

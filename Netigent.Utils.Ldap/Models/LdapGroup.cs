@@ -3,17 +3,35 @@ using System.Collections.Generic;
 
 namespace Netigent.Utils.Ldap.Models
 {
-	public class LdapGroup
-	{
-		public string DisplayName { get; set; }
-		public string SamAccountName { get; set; }
-		public string ObjectSid { get; set; }
-		public string ObjectCategory { get; set; }
-		public Guid ObjectGUID { get; set; }
-		public List<string> Members { get; set; }
+    public class LdapGroup
+    {
+        public string DisplayName { get; set; }
+        public string SamAccountName { get; set; }
+        public string ObjectSid { get; set; }
+        public string ObjectCategory { get; set; }
+        public Guid ObjectGUID { get; set; }
+        public List<string> Members { get; set; }
 
-		public string DistinguishedName { get; set; }
-		public DateTime Created { get; set; }
-		public DateTime Modified { get; set; }
-	}
+        public string DistinguishedName { get; set; }
+        public DateTime Created { get; set; }
+        public DateTime Modified { get; set; }
+
+        /// <summary>
+        /// AzureId (msDS-aadObjectId)
+        /// </summary>
+        public Guid AzureId { get; set; }
+
+        /// <summary>
+        ///  Gets either AzureId (msDS-aadObjectId) or objectGUID.
+        /// </summary>
+        public Guid AzureOrObjectID
+        {
+            get
+            {
+                return this.AzureId == default(Guid)
+                    ? this.ObjectGUID
+                    : this.AzureId;
+            }
+        }
+    }
 }

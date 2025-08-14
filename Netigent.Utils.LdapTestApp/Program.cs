@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Netigent.Utils.Ldap;
-using Netigent.Utils.Ldap.Enum;
 using Netigent.Utils.Ldap.Models;
 
 namespace Netigent.Utils.LdapTestApp
@@ -36,7 +35,7 @@ namespace Netigent.Utils.LdapTestApp
                 foreach (var g in ldapGroups)
                 {
                     if (++count > 500) break;
-                    Console.WriteLine($"   {count}. Group: {g.DistinguishedName} - {g.DisplayName}");
+                    Console.WriteLine($"   {count}. Group: {g.DisplayName} | {g.AzureOrObjectID.ToString()} | {g.DistinguishedName}");
                 }
             }, false);
 
@@ -48,14 +47,14 @@ namespace Netigent.Utils.LdapTestApp
             {
                 var group = ldapService.GetGroup(g.DisplayName);
                 if (group == null) throw new Exception("Group not found");
-                Console.WriteLine($" - Found group: {group.DistinguishedName}");
+                Console.WriteLine($" - Found group: {group.Data.DistinguishedName}");
             }, false);
 
             RunTest($"GetGroup - by DN  '{g.DistinguishedName}'", () =>
             {
-                var group = ldapService.GetGroup(g.DistinguishedName, LdapQueryAttribute.Dn);
+                var group = ldapService.GetGroup(g.DistinguishedName);
                 if (group == null) throw new Exception("Group not found");
-                Console.WriteLine($" - Found group: {group.DistinguishedName}");
+                Console.WriteLine($" - Found group: {group.Data.DistinguishedName}");
             }, false);
             #endregion
 
@@ -72,7 +71,7 @@ namespace Netigent.Utils.LdapTestApp
                 foreach (var u in ldapUsers)
                 {
                     if (++count > 500) break;
-                    Console.WriteLine($"   {count}. User: {u.DistinguishedName} - {u.Mail} - {u.UserPrincipalName}");
+                    Console.WriteLine($"   {count}. User: {u.UserPrincipalName} | {u.AzureOrObjectID.ToString()} | {u.DistinguishedName}");
                 }
             }, false);
 
@@ -81,11 +80,18 @@ namespace Netigent.Utils.LdapTestApp
             int userId = Convert.ToInt32(Console.ReadLine() ?? string.Empty);
             LdapUser u = ldapUsers[userId - 1];
 
-            RunTest("MemberOf", () =>
+            RunTest("MemberOf BY DN", () =>
             {
-                bool isMember = ldapService.IsMemberOf(u.UserPrincipalName, g.DistinguishedName, LdapQueryAttribute.Dn);
+                bool isMember = ldapService.IsMemberOf(u.UserPrincipalName, g.AzureId.ToString());
                 Console.WriteLine($" - User '{u.UserPrincipalName} 'is {(isMember ? "" : "NOT ")} a member of group '{g.DistinguishedName}'");
             }, false);
+
+            RunTest("MemberOf BY GroupId", () =>
+            {
+                bool isMember = ldapService.IsMemberOf(u.UserPrincipalName, g.ObjectGUID.ToString());
+                Console.WriteLine($" - User '{u.UserPrincipalName} 'is {(isMember ? "" : "NOT ")} a member of group '{g.DistinguishedName}'");
+            }, false);
+
 
             Console.WriteLine($"Enter your password for '{u.Mail}'");
             string password = Console.ReadLine() ?? string.Empty;
@@ -95,7 +101,7 @@ namespace Netigent.Utils.LdapTestApp
                 var result = ldapService.UserLogin(u.Mail, password);
                 if (result.Success)
                 {
-                    Console.WriteLine($" - Logged in user: {result.Data.UserPrincipalName} - {result.Data.DisplayName} - {result.Data.ObjectGUID} - {result.Data.AzureObjectId}");
+                    Console.WriteLine($" - Logged in user: {result.Data.UserPrincipalName} - {result.Data.DisplayName} - {result.Data.ObjectGUID} - {result.Data.AzureId}");
                 }
                 else
                 {
@@ -108,7 +114,7 @@ namespace Netigent.Utils.LdapTestApp
                 var result = ldapService.UserLogin(u.UserPrincipalName, password);
                 if (result.Success)
                 {
-                    Console.WriteLine($" - Logged in user: {result.Data.UserPrincipalName} - {result.Data.DisplayName} - {result.Data.ObjectGUID} - {result.Data.AzureObjectId}");
+                    Console.WriteLine($" - Logged in user: {result.Data.UserPrincipalName} - {result.Data.DisplayName} - {result.Data.ObjectGUID} - {result.Data.AzureId}");
                 }
                 else
                 {
@@ -116,75 +122,80 @@ namespace Netigent.Utils.LdapTestApp
                 }
             }, false);
 
-            RunTest("DisableUser", () =>
+            RunTest("DisableUser", async () =>
             {
-                var result = ldapService.DisableUser(u.UserPrincipalName);
+                var result = await ldapService.DisableUserAsync(u.UserPrincipalName);
                 if (!result.Success)
                     throw new Exception(result.Message);
-            });
+            }, false);
 
-            RunTest("EnableAndUnlockUser", () =>
+            RunTest("EnableAndUnlockUser", async () =>
             {
-                var result = ldapService.EnableAndUnlockUser(u.UserPrincipalName);
+                var result = await ldapService.EnableUserAsync(u.UserPrincipalName);
                 if (!result.Success)
                     throw new Exception(result.Message);
-            });
+            }, false);
 
-            RunTest("UpsertUser (Add)", () =>
+            //RunTest("UpsertUser (Add)", async () =>
+            //{
+            //    Console.WriteLine("New User Password??");
+            //    string? newPassword = Console.ReadLine();
+
+            //    var result = await ldapService.UpsertUserAsync(
+            //        upn: t.Upn,
+            //        setPassword: newPassword,
+            //        email: t.Email,
+            //        displayName: t.DisplayName,
+            //        company: t.Company,
+            //        jobTitle: t.JobTitle,
+            //        mobile: t.Telephone,
+            //        department: t.Department,
+            //        office: "IBKS - LA",
+            //        managerDn: "",
+            //        street: "IBKS",
+            //        city: "Los Angeles",
+            //        zip: "90066");
+
+            //    if (!result.Success)
+            //        throw new Exception(result.Message);
+
+            //    Console.WriteLine("Add Result: " + result.Message);
+            //}, false);
+
+            //RunTest("UpsertUser (Mod)", async () =>
+            //{
+            //    string tStamp = DateTime.Now.ToString("HHmmss");
+            //    Console.WriteLine("Mod Stamp = " + tStamp);
+
+            //    var result = await ldapService.UpsertUserAsync(
+            //        upn: u.UserPrincipalName,
+            //        setPassword: "",
+            //        email: u.Mail,
+            //        displayName: u.DisplayName + tStamp,
+            //        company: u.Company + tStamp,
+            //        jobTitle: u.JobTitle + tStamp,
+            //        mobile: u.MobilePhone + tStamp,
+            //        department: u.Department + tStamp,
+            //        street: u.Street + tStamp,
+            //        city: u.City + tStamp,
+            //        zip: u.ZipPostalCode + tStamp,
+            //        office: "IBKS - LA",
+            //        managerDn: "");
+
+            //    if (!result.Success)
+            //        throw new Exception(result.Message);
+
+            //    Console.WriteLine("Mod Result: " + result.Message);
+            //}, false);
+
+            RunTest("ResetPassword", async () =>
             {
-                Console.WriteLine("New User Password??");
-                string? newPassword = Console.ReadLine();
-
-                var result = ldapService.UpsertUser(
-                    username: t.Upn,
-                    setPassword: newPassword,
-                    email: t.Email,
-                    displayName: t.DisplayName,
-                    company: t.Company,
-                    jobTitle: t.JobTitle,
-                    mobile: t.Telephone,
-                    department: t.Department,
-                    description: t.Description);
-
-                if (!result.Success)
-                    throw new Exception(result.Message);
-
-                Console.WriteLine("Add Result: " + result.Message);
-            });
-
-            RunTest("UpsertUser (Mod)", () =>
-            {
-                string tStamp = DateTime.Now.ToString("HHmmss");
-                Console.WriteLine("Mod Stamp = " + tStamp);
-
-                var result = ldapService.UpsertUser(
-                    username: u.UserPrincipalName,
-                    setPassword: "",
-                    email: u.Mail,
-                    displayName: u.DisplayName + tStamp,
-                    company: u.Company + tStamp,
-                    jobTitle: u.JobTitle + tStamp,
-                    mobile: u.MobilePhone + tStamp,
-                    department: u.Department + tStamp,
-                    street: u.Street + tStamp,
-                    city: u.City + tStamp,
-                    zip: u.ZipPostalCode + tStamp,
-                    description: u.OfficeName + tStamp);
-
-                if (!result.Success)
-                    throw new Exception(result.Message);
-
-                Console.WriteLine("Mod Result: " + result.Message);
-            });
-
-            RunTest("ResetPassword", () =>
-            {
-                Console.WriteLine($"Reset Password for {u.DistinguishedName}?");
+                Console.WriteLine($"[ Reset Password for {u.DistinguishedName}? ]");
                 string? resetPassword = Console.ReadLine();
 
                 if (resetPassword?.Length > 0)
                 {
-                    var result = ldapService.ResetPassword(u.DistinguishedName, resetPassword.Trim());
+                    var result = await ldapService.ResetPasswordAsync(u.UserPrincipalName, resetPassword.Trim());
                     if (!result.Success)
                         throw new Exception(result.Message);
 
@@ -192,7 +203,7 @@ namespace Netigent.Utils.LdapTestApp
                 }
             });
 
-            RunTest("Add GRoup", () =>
+            RunTest("Add GRoup", async () =>
             {
                 Console.WriteLine($"Add to - Group Id?? ");
                 int agrpId = Convert.ToInt32(Console.ReadLine() ?? string.Empty);
@@ -200,7 +211,7 @@ namespace Netigent.Utils.LdapTestApp
 
                 if (agrpId > 0)
                 {
-                    var result = ldapService.AddToGroup(u.DistinguishedName, ag.DistinguishedName);
+                    var result = await ldapService.AddToGroupAsync(u.UserPrincipalName, ag.AzureOrObjectID.ToString());
                     if (!result.Success)
                         throw new Exception(result.Message);
 
@@ -209,7 +220,7 @@ namespace Netigent.Utils.LdapTestApp
             });
 
 
-            RunTest("Remove Group", () =>
+            RunTest("Remove Group", async () =>
             {
                 Console.WriteLine($"Remove - Group Id?? ");
                 int agrpId = Convert.ToInt32(Console.ReadLine() ?? string.Empty);
@@ -217,7 +228,7 @@ namespace Netigent.Utils.LdapTestApp
 
                 if (agrpId > 0)
                 {
-                    var result = ldapService.RemoveGroup(u.DistinguishedName, ag.DistinguishedName);
+                    var result = await ldapService.RemoveGroupAsync(u.UserPrincipalName, ag.AzureOrObjectID.ToString());
                     if (!result.Success)
                         throw new Exception(result.Message);
 

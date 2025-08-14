@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Options;
+using Netigent.Utils.Ldap.AzureAD;
 using Netigent.Utils.Ldap.Constants;
 using Netigent.Utils.Ldap.Enum;
 using Netigent.Utils.Ldap.Extensions;
@@ -20,7 +21,11 @@ namespace Netigent.Utils.Ldap
         private readonly LdapConnection _connection;
         private readonly NetworkCredential? _serviceAccount;
         private readonly bool _hasServiceAccount;
+
         private readonly string _fullLdapPath;
+
+        private readonly GraphService _azureGraph;
+        private readonly bool _hasAzureGraph;
 
         /// <summary>
         /// Construct LdapQueryService using parameters.
@@ -81,7 +86,7 @@ namespace Netigent.Utils.Ldap
             if (config.ServiceAccount?.Length > 0 && config.ServiceKey?.Length > 0)
             {
                 _serviceAccount = new NetworkCredential(
-                    userName: GetPlainUsername(config.ServiceAccount),
+                    userName: config.ServiceAccount.GetPlainUsername(),
                     password: config.ServiceKey,
                     domain: config.UserLoginDomain);
 
@@ -101,6 +106,21 @@ namespace Netigent.Utils.Ldap
             {
                 _hasServiceAccount = false;
             }
+
+            if (config.AzureTenentId?.Length > 0 && config.AzureClientId?.Length > 0 && config.AzureClientSecret?.Length > 0)
+            {
+                _hasAzureGraph = true;
+                _azureGraph = new GraphService(
+                    tenantId: config.AzureTenentId,
+                    clientId: config.AzureClientId,
+                    clientSecret: config.AzureClientSecret);
+            }
+            else
+            {
+                _hasAzureGraph = false;
+            }
+
+
         }
         #endregion
 
@@ -188,7 +208,7 @@ namespace Netigent.Utils.Ldap
             connection.SessionOptions.SecureSocketLayer = _config.UseSSL;
             connection.SessionOptions.ProtocolVersion = 3;
             connection.SessionOptions.ReferralChasing = ReferralChasingOptions.All;
-            // connection.SessionOptions.VerifyServerCertificate += (conn, cert) => true;
+            connection.SessionOptions.VerifyServerCertificate += (conn, cert) => true;
             connection.AuthType = AuthType.Negotiate | AuthType.Basic;
             return connection;
         }
@@ -199,8 +219,8 @@ namespace Netigent.Utils.Ldap
         private LdapResult SaveLdap(string dn, LdapObjectType objectType, IList<DirectoryAttribute> directoryAttributes)
         {
             bool isExisting = objectType == LdapObjectType.Group
-                ? (GetGroup(dn, LdapQueryAttribute.Dn)?.DistinguishedName ?? string.Empty) == dn
-                : (GetUser(LdapQueryAttribute.Dn, dn)?.DistinguishedName ?? string.Empty) == dn;
+                ? (GetGroup(dn).Data?.DistinguishedName ?? string.Empty) == dn
+                : (GetUser(dn).Data?.DistinguishedName ?? string.Empty) == dn;
 
             try
             {
@@ -266,8 +286,6 @@ namespace Netigent.Utils.Ldap
             }
             catch (DirectoryOperationException dex)
             {
-                Console.WriteLine("Protocols API Failed: " + dex.Message);
-
                 // Check if this is the WILL_NOT_PERFORM / insufficient permission case
                 if (dex.Response?.ErrorMessage?.Contains("WILL_NOT_PERFORM") == true ||
                     dex.Response?.ErrorMessage?.Contains("INSUFF_ACCESS_RIGHTS") == true ||
@@ -277,7 +295,7 @@ namespace Netigent.Utils.Ldap
                     return new LdapResult
                     {
                         Success = false,
-                        Message = $"{dex.Response?.ErrorMessage ?? string.Empty} - Are you running an Azure Cloud Only AD etc, you'll need to run Azure Graph Services"
+                        Message = $"{dex.Response?.ErrorMessage ?? string.Empty} - {LdapWarnings.AzureCloud}"
                     };
                 }
 

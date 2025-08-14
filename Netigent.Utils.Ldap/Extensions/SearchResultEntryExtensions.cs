@@ -81,7 +81,7 @@ namespace Netigent.Utils.Ldap.Extensions
             return output;
         }
 
-        public static LdapUser ToUserResult(this SearchResultEntry searchResult)
+        public static LdapUser TofoundUserResult(this SearchResultEntry searchResult)
         {
             if (searchResult == null || searchResult.Attributes.Count == 0)
                 return default;
@@ -110,7 +110,7 @@ namespace Netigent.Utils.Ldap.Extensions
                 output.ObjectGUID = searchResult.Attributes[LdapAttribute.ObjectGUID].ParseValue<Guid>();
 
             if (searchResult.Attributes.Contains(LdapAttribute.AzureObjectId))
-                output.AzureObjectId = searchResult.Attributes[LdapAttribute.AzureObjectId].ParseValue<Guid>();
+                output.AzureId = searchResult.Attributes[LdapAttribute.AzureObjectId].ParseValue<Guid>();
 
             if (searchResult.Attributes.Contains(LdapAttribute.City))
                 output.City = searchResult.Attributes[LdapAttribute.City].ParseValue<string>();
@@ -296,6 +296,8 @@ namespace Netigent.Utils.Ldap.Extensions
             if (searchResult.Attributes.Contains(LdapAttribute.WhenChanged))
                 output.Modified = searchResult.Attributes[LdapAttribute.WhenChanged].ParseValue<DateTime>();
 
+            if (searchResult.Attributes.Contains(LdapAttribute.AzureObjectId))
+                output.AzureId = searchResult.Attributes[LdapAttribute.AzureObjectId].ParseValue<Guid>();
 
             return output;
         }

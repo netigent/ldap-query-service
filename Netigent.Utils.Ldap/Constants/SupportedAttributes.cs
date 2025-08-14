@@ -51,7 +51,8 @@
             LdapAttribute.Member,
             LdapAttribute.DistinguishedName,
             LdapAttribute.WhenChanged,
-            LdapAttribute.WhenCreated
+            LdapAttribute.WhenCreated,
+            LdapAttribute.AzureObjectId,
         ];
     }
 }

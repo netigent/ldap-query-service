@@ -9,10 +9,8 @@
         public bool UseSSL { get; set; } = true;
         public string UserLoginDomain { get; set; }
 
-        // Used to pull from appSettings.json, not directly used by this project
         public string ServiceAccount { get; set; } = string.Empty;
 
-        // Used to pull from appSettings.json, not directly used by this project
         public string ServiceKey { get; set; } = string.Empty;
 
         /// <summary>
@@ -25,5 +23,10 @@
         /// Period to delay next attempt in milliseconds
         /// </summary>
         public int RetryDelayMs { get; set; } = 300;
+
+        public string? AzureTenentId { get; set; }
+        public string? AzureClientId { get; set; }
+        public string? AzureClientSecret { get; set; }
+
     }
 }

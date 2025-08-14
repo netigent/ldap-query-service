@@ -1,6 +1,5 @@
 using Moq;
 using Netigent.Utils.Ldap;
-using Netigent.Utils.Ldap.Enum;
 using Netigent.Utils.Ldap.Models;
 
 namespace Netigent.Utils.LdapTests
@@ -63,23 +62,6 @@ namespace Netigent.Utils.LdapTests
         }
 
         [Test]
-        public void GetUser_ValidUserQuery_ReturnsUser()
-        {
-            // Arrange
-            var expectedUser = new LdapUser { SamAccountName = "the.developer" };
-
-            _ldapQueryServiceMock
-                .Setup(x => x.GetUser(LdapQueryAttribute.SamAccountName, "the.developer"))
-                .Returns(expectedUser);
-
-            // Act
-            var user = _ldapQueryServiceMock.Object.GetUser(LdapQueryAttribute.SamAccountName, "the.developer");
-
-            // Assert
-            Assert.AreEqual("the.developer", user.SamAccountName);
-        }
-
-        [Test]
         public void GetGroups_ReturnsGroupList()
         {
             // Arrange
@@ -102,111 +84,18 @@ namespace Netigent.Utils.LdapTests
         }
 
         [Test]
-        public void GetGroup_ValidGroupQuery_ReturnsGroup()
-        {
-            // Arrange
-            var expectedGroup = new LdapGroup { SamAccountName = "Admin" };
-
-            _ldapQueryServiceMock
-                .Setup(x => x.GetGroup("Admin", LdapQueryAttribute.DisplayName))
-                .Returns(expectedGroup);
-
-            // Act
-            var group = _ldapQueryServiceMock.Object.GetGroup("Admin");
-
-            // Assert
-            Assert.AreEqual("Admin", group.SamAccountName);
-        }
-
-        [Test]
         public void MemberOf_ValidUserAndGroup_ReturnsTrue()
         {
             // Arrange
             _ldapQueryServiceMock
-                .Setup(x => x.IsMemberOf("the.developer", "Admin", LdapQueryAttribute.DisplayName))
+                .Setup(x => x.IsMemberOf("the.developer", "Admin"))
                 .Returns(true);
 
             // Act
-            var isMember = _ldapQueryServiceMock.Object.IsMemberOf("the.developer", "Admin", LdapQueryAttribute.DisplayName);
+            var isMember = _ldapQueryServiceMock.Object.IsMemberOf("the.developer", "Admin");
 
             // Assert
             Assert.IsTrue(isMember);
-        }
-
-        [Test]
-        public void ResetPassword_ValidUser_ReturnsSuccess()
-        {
-            // Arrange
-            var username = "the.developer";
-            var newPassword = "newPassword";
-            var expectedResult = new LdapResult { Success = true };
-
-            _ldapQueryServiceMock
-                .Setup(x => x.ResetPassword(username, newPassword))
-                .Returns(expectedResult);
-
-            // Act
-            var result = _ldapQueryServiceMock.Object.ResetPassword(username, newPassword);
-
-            // Assert
-            Assert.IsTrue(result.Success);
-        }
-
-        [Test]
-        public void RunSearchQuery_ValidFilter_ReturnsResults()
-        {
-            // Arrange
-            var expectedResults = new List<LdapGeneric>
-    {
-        new LdapGeneric { DistinguishedName = "cn=John Doe,dc=example,dc=com" },
-        new LdapGeneric { DistinguishedName = "cn=Jane Doe,dc=example,dc=com" }
-    };
-
-            _ldapQueryServiceMock
-                .Setup(x => x.RunSearchQuery("(objectClass=user)"))
-                .Returns(expectedResults);
-
-            // Act
-            var results = _ldapQueryServiceMock.Object.RunSearchQuery("(objectClass=user)");
-
-            // Assert
-            Assert.AreEqual(2, results.Count);
-        }
-
-        [Test]
-        public void DisableUser_ValidUsername_ReturnsSuccess()
-        {
-            // Arrange
-            var username = "the.developer";
-            var expectedResult = new LdapResult { Success = true };
-
-            _ldapQueryServiceMock
-                .Setup(x => x.DisableUser(username))
-                .Returns(expectedResult);
-
-            // Act
-            var result = _ldapQueryServiceMock.Object.DisableUser(username);
-
-            // Assert
-            Assert.IsTrue(result.Success);
-        }
-
-        [Test]
-        public void EnableAndUnlockUser_ValidUsername_ReturnsSuccess()
-        {
-            // Arrange
-            var username = "the.developer";
-            var expectedResult = new LdapResult { Success = true };
-
-            _ldapQueryServiceMock
-                .Setup(x => x.EnableAndUnlockUser(username))
-                .Returns(expectedResult);
-
-            // Act
-            var result = _ldapQueryServiceMock.Object.EnableAndUnlockUser(username);
-
-            // Assert
-            Assert.IsTrue(result.Success);
         }
     }
 }

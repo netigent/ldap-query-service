@@ -1,5 +1,4 @@
 using Netigent.Utils.Ldap;
-using Netigent.Utils.Ldap.Enum;
 using Netigent.Utils.Ldap.Models;
 
 namespace Netigent.Utils.LdapTests
@@ -47,18 +46,18 @@ namespace Netigent.Utils.LdapTests
         [TestCase("NETIGENT\\ldap.test", "")]
         [TestCase("ldap.test@NETIGENT.co", "")]
         [TestCase("ldap.test@yahoo.com", "")]
-        public void UserModify_ReturnsSuccess(string username, string password)
+        public async Task UserModify_ReturnsSuccessAsync(string username, string password)
         {
-            LdapResult result = _service.UpsertUser(username, password, "ldap.test@hotmai.com", "From Unit");
+            LdapResult result = await _service.UpsertUserAsync(username, password, "ldap.test@hotmai.com", "From Unit");
 
             // Assert
             Assert.IsTrue(result.Success, message: result.Message);
         }
 
         [TestCase("the.developer", "", "", "")]
-        public void UpsertUser_Creds_ReturnsFalse(string username, string password, string email, string displayname)
+        public async Task UpsertUser_Creds_ReturnsFalseAsync(string username, string password, string email, string displayname)
         {
-            LdapResult result = _service.UpsertUser(username, password, email, displayname);
+            LdapResult result = await _service.UpsertUserAsync(username, password, email, displayname);
 
             // Assert
             Assert.IsTrue(result.Success);
@@ -73,10 +72,10 @@ namespace Netigent.Utils.LdapTests
             Assert.That(result?.Count > 0);
         }
 
-        [TestCase(LdapQueryAttribute.SamAccountName, "the.developer")]
-        public void GetUser_ValidUserQuery_ReturnsUser(LdapQueryAttribute queryAttribute, string query)
+        [TestCase("the.developer")]
+        public void GetUser_ValidUserQuery_ReturnsUser(string query)
         {
-            LdapUser? result = _service.GetUser(queryAttribute, query);
+            var result = _service.GetUser(query);
 
             // Assert
             Assert.That(result != null);
@@ -94,9 +93,9 @@ namespace Netigent.Utils.LdapTests
 
 
         [TestCase("the.developer", "", ExpectedResult = false)]
-        public bool ResetPassword_ValidUser_ReturnsSuccess(string username, string password)
+        public async Task<bool> ResetPassword_ValidUser_ReturnsSuccessAsync(string username, string password)
         {
-            LdapResult result = _service.ResetPassword(username, password);
+            LdapResult result = await _service.ResetPasswordAsync(username, password);
 
             // Assert
             Assert.IsTrue(result.Success);
@@ -104,9 +103,9 @@ namespace Netigent.Utils.LdapTests
         }
 
         [TestCase("the.developer", ExpectedResult = true)]
-        public bool DisableUser_ValidUsername_ReturnsSuccess(string username)
+        public async Task<bool> DisableUser_ValidUsername_ReturnsSuccessAsync(string username)
         {
-            LdapResult result = _service.DisableUser(username);
+            LdapResult result = await _service.DisableUserAsync(username);
 
             // Assert
             Assert.IsTrue(result.Success);
@@ -114,9 +113,9 @@ namespace Netigent.Utils.LdapTests
         }
 
         [TestCase("the.developer", ExpectedResult = true)]
-        public bool EnableAndUnlockUser_ValidUsername_ReturnsSuccess(string username)
+        public async Task<bool> EnableAndUnlockUser_ValidUsername_ReturnsSuccessAsync(string username)
         {
-            LdapResult result = _service.EnableAndUnlockUser(username);
+            LdapResult result = await _service.EnableUserAsync(username);
 
             // Assert
             Assert.IsTrue(result.Success);

@@ -20,9 +20,9 @@ namespace Netigent.Utils.Ldap.Models
         public string DistinguishedName { get; set; }
 
         /// <summary>
-        /// Azure ObjectGUID (msDS-aadObjectId)
+        /// AzureId (msDS-aadObjectId)
         /// </summary>
-        public Guid AzureObjectId { get; set; }
+        public Guid AzureId { get; set; }
 
         //Login Related
         public DateTime? LastLogon { get; set; }
@@ -51,5 +51,18 @@ namespace Netigent.Utils.Ldap.Models
 
         //User Account Control
         public int? UserAccountControl { get; set; }
+
+        /// <summary>
+        ///  Gets either AzureId (msDS-aadObjectId) or objectGUID.
+        /// </summary>
+        public Guid AzureOrObjectID
+        {
+            get
+            {
+                return this.AzureId == default(Guid)
+                    ? this.ObjectGUID
+                    : this.AzureId;
+            }
+        }
     }
 }
