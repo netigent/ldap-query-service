@@ -28,5 +28,7 @@
         public string? AzureClientId { get; set; }
         public string? AzureClientSecret { get; set; }
 
+        public bool? ShouldThrowErrors { get; set; } = false;
+
     }
 }
