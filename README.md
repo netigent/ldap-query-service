@@ -7,6 +7,8 @@ Initially thanks for considering using this library - we hope that it gives you 
 In terms of using the Library the following should get you up and running quickly
 
 # Version Changes
+**1.1.2** Password reset fix.
+
 **1.1.1** Startup flags for ServiceAccount, removing unused pacakges.
 
 **1.1.0** LDAP Write functionality and upgraded to .net8 LTS
