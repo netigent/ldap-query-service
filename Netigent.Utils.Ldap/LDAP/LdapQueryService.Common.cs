@@ -21,11 +21,17 @@ namespace Netigent.Utils.Ldap
         private readonly LdapConnection _connection;
         private readonly NetworkCredential? _serviceAccount;
         private readonly bool _hasServiceAccount;
+        private readonly string _serviceAccountMessage;
 
         private readonly string _fullLdapPath;
 
         private readonly GraphService _azureGraph;
         private readonly bool _hasAzureGraph;
+
+        public bool HasServiceAccount => _hasServiceAccount;
+
+        public string ServiceAccountMessage => _serviceAccountMessage;
+
 
         /// <summary>
         /// Construct LdapQueryService using parameters.
@@ -76,11 +82,12 @@ namespace Netigent.Utils.Ldap
 
             if (string.IsNullOrEmpty(_config.UserLoginDomain))
             {
-                throw new Exception($"{nameof(LdapQueryService)} - No 'UserLoginDomain' configured");
-            }
+                if (config.ShouldThrowErrors ?? false)
+                    throw new Exception($"{nameof(LdapQueryService)} - No 'UserLoginDomain' configured");
 
-            Debug.WriteLine($"{nameof(LdapQueryService)} - Default 'UserLoginDomain' = '{_config.UserLoginDomain}'");
-            Debug.WriteLine($"{nameof(LdapQueryService)} - Connection {_config.FullDNS}:{_config.Port} SSL={_config.UseSSL.ToString()}");
+                _serviceAccountMessage = $"{nameof(LdapQueryService)} - No 'UserLoginDomain' configured";
+                return;
+            }
 
             // Initialize Service Account
             if (config.ServiceAccount?.Length > 0 && config.ServiceKey?.Length > 0)
@@ -95,16 +102,22 @@ namespace Netigent.Utils.Ldap
 
                 if (!bindResult.Success)
                 {
-                    throw new Exception($"{nameof(LdapQueryService)} - Service Account '{config.ServiceAccount}' - Failed {bindResult.Message}");
+                    if (config.ShouldThrowErrors ?? false)
+                        throw new Exception($"{nameof(LdapQueryService)} - Service Account '{config.ServiceAccount}' - Failed {bindResult.Message} check config!");
+
+                    _serviceAccountMessage = $"{nameof(LdapQueryService)} - Service Account '{config.ServiceAccount}' - Failed {bindResult.Message}, check config!";
+                    return;
                 }
 
                 // We have a service account
                 _hasServiceAccount = bindResult.Success;
-                Debug.WriteLine($"{nameof(LdapQueryService)} - Service Account '{config.ServiceAccount}' - Authenticated");
+                _serviceAccountMessage = $"{nameof(LdapQueryService)} - Service Account '{config.ServiceAccount}' - Authenticated";
             }
             else
             {
+                _serviceAccountMessage = $"{nameof(LdapQueryService)} - Service Account Missing.";
                 _hasServiceAccount = false;
+                return;
             }
 
             if (config.AzureTenentId?.Length > 0 && config.AzureClientId?.Length > 0 && config.AzureClientSecret?.Length > 0)
@@ -119,8 +132,6 @@ namespace Netigent.Utils.Ldap
             {
                 _hasAzureGraph = false;
             }
-
-
         }
         #endregion
 
@@ -138,17 +149,6 @@ namespace Netigent.Utils.Ldap
             {
 
             }
-        }
-
-        /// <inheritdoc />
-        public IList<LdapGeneric> RunSearchQuery(string filter)
-        {
-            IList<LdapGeneric> results = new List<LdapGeneric>();
-
-            foreach (SearchResultEntry r in SearchLdap(filter, new[] { "*" }))
-                results.Add(r.ToGenericResult());
-
-            return results;
         }
 
         #region Internal

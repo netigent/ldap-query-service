@@ -8,6 +8,16 @@ namespace Netigent.Utils.Ldap
     public interface ILdapQueryService
     {
         /// <summary>
+        /// Has Service Account for LDAP.
+        /// </summary>
+        bool HasServiceAccount { get; }
+
+        /// <summary>
+        /// Startup Messages, dont disclose to end users!
+        /// </summary>
+        string ServiceAccountMessage { get; }
+
+        /// <summary>
         /// Attempt to Bind as User.
         /// </summary>
         /// <param name="username">Supply either user.name, user.principal@mydomain.com, users.email@domain.com</param>
