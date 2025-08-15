@@ -182,6 +182,10 @@ namespace Netigent.Utils.Ldap.AzureAD
 
         internal async Task<LdapResult> UpdatePasswordAsync(Guid userId, string password)
         {
+            // Access Token Check
+            var accessResult = await HasAccessToken();
+            if (!accessResult.Success) return new LdapResult<string> { Message = accessResult.Message };
+
             var passwordUpdate = new GraphUser
             {
                 PasswordProfile = new GraphNewPassword
