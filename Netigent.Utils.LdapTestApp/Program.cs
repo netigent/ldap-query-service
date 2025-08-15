@@ -18,6 +18,11 @@ namespace Netigent.Utils.LdapTestApp
             var ldapConfig = config.GetSection(LdapConfig.Section).Get<LdapConfig>();
             ldapService = new LdapQueryService(ldapConfig);
 
+            if (ldapService == null || !ldapService.HasServiceAccount)
+            {
+                throw new Exception(ldapService.ServiceAccountMessage);
+            }
+
             IList<LdapUser>? ldapUsers = new List<LdapUser>();
             IList<LdapGroup>? ldapGroups = new List<LdapGroup>();
 

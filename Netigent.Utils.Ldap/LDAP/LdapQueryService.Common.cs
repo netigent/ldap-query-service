@@ -82,10 +82,11 @@ namespace Netigent.Utils.Ldap
 
             if (string.IsNullOrEmpty(_config.UserLoginDomain))
             {
-                if (config.ShouldThrowErrors ?? true)
+                if (config.ShouldThrowErrors ?? false)
                     throw new Exception($"{nameof(LdapQueryService)} - No 'UserLoginDomain' configured");
 
                 _serviceAccountMessage = $"{nameof(LdapQueryService)} - No 'UserLoginDomain' configured";
+                return;
             }
 
             // Initialize Service Account
@@ -101,10 +102,11 @@ namespace Netigent.Utils.Ldap
 
                 if (!bindResult.Success)
                 {
-                    if (config.ShouldThrowErrors ?? true)
-                        throw new Exception($"{nameof(LdapQueryService)} - Service Account '{config.ServiceAccount}' - Failed {bindResult.Message}");
+                    if (config.ShouldThrowErrors ?? false)
+                        throw new Exception($"{nameof(LdapQueryService)} - Service Account '{config.ServiceAccount}' - Failed {bindResult.Message} check config!");
 
-                    _serviceAccountMessage = $"{nameof(LdapQueryService)} - Service Account '{config.ServiceAccount}' - Failed {bindResult.Message}";
+                    _serviceAccountMessage = $"{nameof(LdapQueryService)} - Service Account '{config.ServiceAccount}' - Failed {bindResult.Message}, check config!";
+                    return;
                 }
 
                 // We have a service account
@@ -113,7 +115,9 @@ namespace Netigent.Utils.Ldap
             }
             else
             {
+                _serviceAccountMessage = $"{nameof(LdapQueryService)} - Service Account Missing.";
                 _hasServiceAccount = false;
+                return;
             }
 
             if (config.AzureTenentId?.Length > 0 && config.AzureClientId?.Length > 0 && config.AzureClientSecret?.Length > 0)
