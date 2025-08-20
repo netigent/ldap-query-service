@@ -7,6 +7,8 @@ Initially thanks for considering using this library - we hope that it gives you 
 In terms of using the Library the following should get you up and running quickly
 
 # Version Changes
+**1.1.4** Ctor Update.
+
 **1.1.3** Ctor Update.
 
 **1.1.2** Password reset fix.

@@ -87,7 +87,7 @@ namespace Netigent.Utils.Ldap
         /// Construct LdapQueryService using parameters.
         /// </summary>
         /// <param name="config"></param>
-        public LdapQueryService(LdapConfig? config = default)
+        public LdapQueryService(LdapConfig config)
         {
             if (!IsValidConfig(config))
             {
