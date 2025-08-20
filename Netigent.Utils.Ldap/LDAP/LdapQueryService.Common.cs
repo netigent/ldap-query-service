@@ -43,7 +43,19 @@ namespace Netigent.Utils.Ldap
         /// <param name="defaultUserDomain">(Optional) If a value e.g. myorg is supplied then, Login will ignore supplied  </param>
         /// <param name="maxTries">(Optional) Max Tries if LDAP is unavailable.</param>
         /// <param name="retryDelayMs">(Optional) Delay between Retry in MS</param>
-        public LdapQueryService(string serverDns, string searchBase, int port = 636, bool useSSL = false, string defaultUserDomain = "", string serviceAccount = "", string serviceKey = "", int maxTries = 1, int retryDelayMs = 300)
+        public LdapQueryService(
+            string serverDns,
+            string searchBase,
+            int port = 636,
+            bool useSSL = false,
+            string defaultUserDomain = "",
+            string serviceAccount = "",
+            string serviceKey = "",
+            int maxTries = 1,
+            int retryDelayMs = 300,
+            string azureTenantId = "",
+            string azureClientId = "",
+            string azureClientSecret = "")
         : this(new LdapConfig
         {
             FullDNS = serverDns,
@@ -55,6 +67,9 @@ namespace Netigent.Utils.Ldap
             RetryDelayMs = retryDelayMs,
             ServiceAccount = serviceAccount,
             ServiceKey = serviceKey,
+            AzureTenentId = azureTenantId,
+            AzureClientId = azureClientId,
+            AzureClientSecret = azureClientSecret,
         })
         {
         }
@@ -72,61 +87,67 @@ namespace Netigent.Utils.Ldap
         /// Construct LdapQueryService using parameters.
         /// </summary>
         /// <param name="config"></param>
-        public LdapQueryService(LdapConfig config)
+        public LdapQueryService(LdapConfig? config = default)
         {
-            _config = config;
-            _connection = BuildConnection();
-
-            // Old Format LDAP
-            _fullLdapPath = $"{(_config.UseSSL ? "LDAPS" : "LDAP")}://{_config.FullDNS}{(_config.Port != 389 ? $":{_config.Port}" : string.Empty)}";
-
-            if (string.IsNullOrEmpty(_config.UserLoginDomain))
+            if (!IsValidConfig(config))
             {
-                if (config.ShouldThrowErrors ?? false)
-                    throw new Exception($"{nameof(LdapQueryService)} - No 'UserLoginDomain' configured");
-
-                _serviceAccountMessage = $"{nameof(LdapQueryService)} - No 'UserLoginDomain' configured";
+                _hasServiceAccount = false;
+                _serviceAccountMessage = "Invalid LDAP Config";
                 return;
             }
 
+            _config = config;
+
+
             // Initialize Service Account
-            if (config.ServiceAccount?.Length > 0 && config.ServiceKey?.Length > 0)
+            if (_config.UserLoginDomain.Length > 0 && _config.ServiceAccount.Length > 0 && _config.ServiceKey?.Length > 0)
             {
+                // Build Connection
+                _connection = BuildConnection();
+
+                // Old Format LDAP
+                _fullLdapPath = $"{(_config.UseSSL ? "LDAPS" : "LDAP")}://{_config.FullDNS}{(_config.Port != 389 ? $":{_config.Port}" : string.Empty)}";
+
+                // Build Service Account Creds
                 _serviceAccount = new NetworkCredential(
-                    userName: config.ServiceAccount.GetPlainUsername(),
-                    password: config.ServiceKey,
-                    domain: config.UserLoginDomain);
+                    userName: _config.ServiceAccount.GetPlainUsername(),
+                    password: _config.ServiceKey,
+                    domain: _config.UserLoginDomain);
 
                 // Attempt to bindService Account
                 var bindResult = BindConnection(_serviceAccount);
 
+
                 if (!bindResult.Success)
                 {
-                    if (config.ShouldThrowErrors ?? false)
-                        throw new Exception($"{nameof(LdapQueryService)} - Service Account '{config.ServiceAccount}' - Failed {bindResult.Message} check config!");
+                    if (_config.ShouldThrowErrors ?? false)
+                    {
+                        throw new Exception($"{nameof(LdapQueryService)} - Service Account '{_config.ServiceAccount}' - Failed {bindResult.Message} check LDAP config!");
+                    }
 
-                    _serviceAccountMessage = $"{nameof(LdapQueryService)} - Service Account '{config.ServiceAccount}' - Failed {bindResult.Message}, check config!";
+                    _serviceAccountMessage = $"{nameof(LdapQueryService)} - Service Account '{_config.ServiceAccount}' - Failed {bindResult.Message}, check LDAP config!";
                     return;
                 }
 
                 // We have a service account
                 _hasServiceAccount = bindResult.Success;
-                _serviceAccountMessage = $"{nameof(LdapQueryService)} - Service Account '{config.ServiceAccount}' - Authenticated";
+                _serviceAccountMessage = $"{nameof(LdapQueryService)} - Service Account '{_config.ServiceAccount}' - Authenticated";
             }
             else
             {
-                _serviceAccountMessage = $"{nameof(LdapQueryService)} - Service Account Missing.";
+                _serviceAccountMessage = $"{nameof(LdapQueryService)} - UserLoginDomain, ServiceAccount and ServiceKey are required.";
                 _hasServiceAccount = false;
                 return;
             }
 
-            if (config.AzureTenentId?.Length > 0 && config.AzureClientId?.Length > 0 && config.AzureClientSecret?.Length > 0)
+            // Initialise the optional Azure failover
+            if (_config.AzureTenentId?.Length > 0 && _config.AzureClientId?.Length > 0 && _config.AzureClientSecret?.Length > 0)
             {
                 _hasAzureGraph = true;
                 _azureGraph = new GraphService(
-                    tenantId: config.AzureTenentId,
-                    clientId: config.AzureClientId,
-                    clientSecret: config.AzureClientSecret);
+                    tenantId: _config.AzureTenentId,
+                    clientId: _config.AzureClientId,
+                    clientSecret: _config.AzureClientSecret);
             }
             else
             {
@@ -334,6 +355,21 @@ namespace Netigent.Utils.Ldap
             Debug.WriteLine($"Result Count = {sr.Entries.Count}");
             return sr.Entries;
         }
-        #endregion
+
+        private bool IsValidConfig(LdapConfig? config)
+        {
+            if (config == null
+                || (config.FullDNS?.Length ?? 0) == 0
+                || (config.SearchBase?.Length ?? 0) == 0
+                || (config.ServiceAccount?.Length ?? 0) == 0
+                || (config.UserLoginDomain?.Length ?? 0) == 0
+                || (config.ServiceKey?.Length ?? 0) == 0)
+            {
+                return false;
+            }
+
+            return true;
+            #endregion
+        }
     }
 }
