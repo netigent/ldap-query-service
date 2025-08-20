@@ -3,11 +3,11 @@
     public class LdapConfig
     {
         public static string Section { get; } = "LDAP";
-        public string FullDNS { get; set; }
-        public string SearchBase { get; set; }
+        public string FullDNS { get; set; } = string.Empty;
+        public string SearchBase { get; set; } = string.Empty;
         public int Port { get; set; } = 636;
         public bool UseSSL { get; set; } = true;
-        public string UserLoginDomain { get; set; }
+        public string UserLoginDomain { get; set; } = string.Empty;
 
         public string ServiceAccount { get; set; } = string.Empty;
 
