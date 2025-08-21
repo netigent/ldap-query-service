@@ -1,12 +1,30 @@
 # LdapQueryService
 LDAP Library for .netcore allowing you to Authenticate, Query Users and Groups, check membership.
+The library now has the ability to add/remove groups, create/update users, enable/disable users.
+Works with LDAP and has backup for working with EntraID (AzureAD) Domain Services (Cloud Only AD by Microsoft)
 
 # How to use
 
 Initially thanks for considering using this library - we hope that it gives you some benefits.
 In terms of using the Library the following should get you up and running quickly
 
+# Required Permissions
+The following permissions are required
+
+**Full Active Directory LDAP**
+The service account should have a Password Policy or be a Member of a Group that has rights to reset passwords e.g. User Administrator, Helpdesk Administrator, or Password Administrator.
+
+**EntraID (AzureAD) Domain Services (Cloud Only AD by Microsoft)**
+You will need an App Registration (ClientId and ClientSecret) with API Permissions for
+Application > Directory.ReadWrite.All
+Application > User.ReadWrite.All
+
+This App Registration also needs to be part of (this is to reset passwords and enable accounts)
+Entra ID > Roles and administrators > User Administrator (or Helpdesk Administrator, or Password Administrator)
+
 # Version Changes
+**1.1.5** Basic Authentication, read the appSettings.json below due to changes updated readme.
+
 **1.1.4** Ctor Update.
 
 **1.1.3** Ctor Update.
@@ -33,15 +51,19 @@ In terms of using the Library the following should get you up and running quickl
 
 ```
   "LDAP": {
-    "FullDNS": "myorg.com",
+    "FullDNS": "mydnsserver.com",
     "Port": 636,
     "SearchBase": "OU=AADDC Users,DC=myorg,DC=com",
     "UseSSL": false,
-    "UserLoginDomain": "MyDefaultDomain",				// (Optional)
+    "UserLoginDomain": "MyDefaultDomain",				// The base Domain, how are the UPN formed is it my.user@NETIGENT or my.user@NETIGENT.co
 	"MaxTries": 1,										// (Optional) Number of times to try logging, ONLY if LDAP reports unavailable, due to outage
 	"RetryDelayMs": 300,								// (Optional) If retrying, how long to wait in MS
-    "ServiceAccount": "mydomain\specialLdapAccount",	// (Optional) Not directly used by Nuget, Handy for use in your project via DI, you provide this by other ways if you wish
-    "ServiceKey": "myserviceaccountpassword1123132"		// (Optional) Not directly used by Nuget, Handy for use in your project via DI, you provide this by other ways if you wish
+    "ServiceAccount": "mydomain\specialLdapAccount",	// If your UserLoginDomain, has a extension e.g. NETIGENT.co, try setting serviceAccount as NETIGENT\\MyServiceAccount or MyServiceAccount@NETIGENT.co
+    "ServiceKey": "myserviceaccountpassword1123132",	
+	"AzureTenentId": "",								// (Optional) If you are running EntraID Domain Services ( Cloud Only AD ) by Azure
+    "AzureClientId": "",								// (Optional) If you are running EntraID Domain Services ( Cloud Only AD ) by Azure
+    "AzureClientSecret": "",							// (Optional) If you are running EntraID Domain Services ( Cloud Only AD ) by Azure 
+	"ShouldThrowErrors": false,							// (Optional), False means failure to bind will populate Properties instead of throwing error
   },
 ```
   
