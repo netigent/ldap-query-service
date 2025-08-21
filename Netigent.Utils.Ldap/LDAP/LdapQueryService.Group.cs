@@ -65,7 +65,7 @@ namespace Netigent.Utils.Ldap
                 const AuthenticationTypes authenticationTypes = AuthenticationTypes.Secure | AuthenticationTypes.Sealing | AuthenticationTypes.ServerBind;
                 using (var groupDE = new DirectoryEntry(
                     $"LDAP://{_config.FullDNS}/{foundGroupResult.Data.DistinguishedName}",
-                    $"{_config.UserLoginDomain}\\{_config.ServiceAccount}",
+                    $"{_config.UserLoginDomain}\\{_config.ServiceAccount.GetPlainUsername()}",
                     _config.ServiceKey,
                     authenticationTypes))
                 {
@@ -207,7 +207,7 @@ namespace Netigent.Utils.Ldap
             if (group == null)
             {
                 // LDAP Search
-                var result = SearchLdap(string.Format(LdapFilter.FindUserByDisplayname, groupname), SupportedAttributes.Group);
+                var result = SearchLdap(string.Format(LdapFilter.FindGroupByDisplayname, groupname), SupportedAttributes.Group);
 
                 if (result.Count > 0)
                     group = result[0].ToGroupResult();

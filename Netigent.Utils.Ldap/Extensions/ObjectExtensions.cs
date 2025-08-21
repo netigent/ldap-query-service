@@ -27,6 +27,16 @@ namespace Netigent.Utils.Ldap.Extensions
                         : username; // Otherwise treat username as-is e.g. john.bloggs
         }
 
+        public static string GetDomain(this string username)
+        {
+            // Determine the username
+            return username.Contains("@") // If account has a @ e.g. john.bloggs@mycompany.com
+                    ? (username.Split('@')[1])  // Take 1st part as possible username
+                    : username.Contains("\\") // If user is presented as mycompany\john.bloggs
+                        ? (username.Split('\\')[0]) // Take last part
+                        : string.Empty;
+        }
+
         public static bool IsValidPassword(this string password, int minLength = 8, int groupComplexity = 3)
         {
             if (string.IsNullOrEmpty(password))

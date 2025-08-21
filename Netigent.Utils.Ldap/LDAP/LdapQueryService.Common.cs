@@ -109,10 +109,9 @@ namespace Netigent.Utils.Ldap
                 _fullLdapPath = $"{(_config.UseSSL ? "LDAPS" : "LDAP")}://{_config.FullDNS}{(_config.Port != 389 ? $":{_config.Port}" : string.Empty)}";
 
                 // Build Service Account Creds
-                _serviceAccount = new NetworkCredential(
-                    userName: _config.ServiceAccount.GetPlainUsername(),
-                    password: _config.ServiceKey,
-                    domain: _config.UserLoginDomain);
+                _serviceAccount = _config.ServiceAccount == _config.ServiceAccount.GetPlainUsername()
+                    ? new NetworkCredential(userName: _config.ServiceAccount, password: _config.ServiceKey, domain: _config.UserLoginDomain) // No Domain Apply Basic
+                    : new NetworkCredential(userName: _config.ServiceAccount, password: _config.ServiceKey); // Account has a domain provided, domain only for UPN purposes.
 
                 // Attempt to bindService Account
                 var bindResult = BindConnection(_serviceAccount);
@@ -228,9 +227,7 @@ namespace Netigent.Utils.Ldap
             LdapConnection connection = new LdapConnection(identifier);
             connection.SessionOptions.SecureSocketLayer = _config.UseSSL;
             connection.SessionOptions.ProtocolVersion = 3;
-            connection.SessionOptions.ReferralChasing = ReferralChasingOptions.All;
-            connection.SessionOptions.VerifyServerCertificate += (conn, cert) => true;
-            connection.AuthType = AuthType.Negotiate | AuthType.Basic;
+            connection.AuthType = AuthType.Basic;
             return connection;
         }
 

@@ -26,9 +26,8 @@ namespace Netigent.Utils.Ldap
             // Users Connection
             LdapConnection userConnection = BuildConnection();
             LdapResult loginResult = BindConnection(new NetworkCredential(
-                userName: foundUserResult.Data.SamAccountName.GetPlainUsername(),
-                password: password,
-                domain: _config.UserLoginDomain),
+                userName: foundUserResult.Data.UserPrincipalName,
+                password: password),
                 userConnection);
 
             if (loginResult.Success)
@@ -130,7 +129,7 @@ namespace Netigent.Utils.Ldap
             if (user == null)
             {
                 // Attempting to find via DN
-                var result = SearchLdap(string.Format(LdapFilter.FindGroupBySam, username), SupportedAttributes.User);
+                var result = SearchLdap(string.Format(LdapFilter.FindUserBySam, username.GetPlainUsername()), SupportedAttributes.User);
                 if (result.Count > 0)
                 {
                     user = result[0].TofoundUserResult();
